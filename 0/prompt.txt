@@ -1,0 +1,19 @@
+<pasted_content id="77d0">
+Task: update ONLY src/core/types.ts to contract v1. Do not touch any other file. Never read .env or print environment variables. No network calls, no new dependencies. snake_case everywhere.
+
+Changes:
+1. Remove Evidence and EvidenceStatus. Add:
+   - type FactStatus = "given" | "extracted" | "cross_checked" | "uncertain"
+   - type FactProvider = "crustdata" | "fixture" | "user_input" | "derived" | "model"
+   - interface FactSource { provider: FactProvider; operation?: "autocomplete" | "company_search" | "company_enrich"; record_id?: string; retrieved_at: string; source_url?: string }
+   - interface Fact<T> { id: string; value: T; claim: string; field?: string; source: FactSource; status: FactStatus; as_of?: string; derived_from?: readonly string[] }
+   - type AnyFact = Fact<unknown>
+   - export const CITEABLE_FACT_STATUSES: readonly FactStatus[] = ["given", "cross_checked"]
+   All readonly. Comment each status precisely: given = reported directly by a provider or the user, unchanged; extracted = pulled out of free text, not citeable until verified; cross_checked = at least two independent facts agree and are listed in derived_from; uncertain = conflicting or unsupported, never citeable. Comment that only deterministic code sets status, the model may only reference existing fact ids, and facts with provider "model" are never citeable.
+2. Prospect gets facts: readonly AnyFact[]. Assessment no longer holds evidence items; CriterionScore.evidence_ids becomes fact_ids; OutreachDraft.cited_evidence_ids becomes cited_fact_ids.
+3. RunStep gets "plan" in addition to search, validate, enrich, assess. Run counts gain llm_calls, llm_input_tokens, llm_output_tokens.
+4. RunConfig gains: model (string), max_llm_calls_per_run (number), max_output_tokens_per_call (number). DEFAULT_RUN_CONFIG: model "claude-haiku", max_llm_calls_per_run 20, max_output_tokens_per_call 1500 (starting values to tune; say so in a comment), keeping the 100 and 15 caps. Add DEV_RUN_CONFIG: max_search_results 10, max_enrichments 2, same model and LLM caps.
+5. Update every comment that mentions the old names.
+
+Then run npx tsc --noEmit and npx vitest run (existing tests must still pass). Summarise in 6 bullets what changed and anything you were unsure about.
+</pasted_content id="77d0">
