@@ -1,0 +1,190 @@
+<pasted_content id="bb62">
+Please inspect the repository instructions.
+
+1. Read CLAUDE.md and AGENTS.md.
+2. Explain the coding rules relevant to this project.
+3. Confirm whether the AGENTS.md instructions are available
+   in your current context.
+4. Locate the relevant Next.js documentation shipped with
+   the installed package.
+
+Do not modify any files.
+Do not run Git commands.
+Do not commit or push anything.
+</pasted_content id="bb62">
+
+---
+
+<pasted_content id="bb62">
+We are building SignalScout AI for neatHack 2026.
+
+My assigned areas are:
+- src/core/agent/
+- src/app/
+
+My teammate owns:
+- src/core/types.ts
+- src/core/data/
+- src/core/fixtures/
+- src/core/observability/
+- tests/
+
+Please inspect the existing repository and the relevant documentation
+bundled with the installed Next.js version.
+
+Do not modify any files.
+Do not run Git commands.
+Do not commit or push anything.
+
+Prepare an implementation plan for my assigned areas.
+
+The plan should cover:
+
+1. The responsibilities of each module in src/core/agent/.
+2. The pipeline stages from processing the user's ideal customer
+   profile through prospect validation, controlled enrichment,
+   scoring and outreach generation.
+3. The UI pages and components needed in src/app/.
+4. How the UI will call the agent pipeline.
+5. The shared data types and interfaces that my teammate must
+   define in src/core/types.ts.
+6. How to limit enrichment calls and prevent unnecessary API costs.
+7. How we should test the pipeline using synthetic fixtures.
+8. Which implementation decisions must wait until we agree on
+   the shared data contract.
+
+Keep the plan consistent with the existing repository.
+Consult the bundled Next.js documentation before making
+Next.js-specific recommendations.
+
+Do not implement anything yet. Return the plan and list any
+questions that need agreement with my teammate.
+</pasted_content id="bb62">
+
+---
+
+<pasted_content id="bb62">
+Please revise your SignalScout AI implementation plan using
+the existing repository structure and your previous response.
+
+This is a planning-only task.
+
+Do not modify any files.
+Do not run Git commands.
+Do not commit or push anything.
+
+Please make the following clarifications:
+
+1. Keep the initial product scope focused on Crustdata for real
+   data and synthetic fixtures for development and testing.
+   Do not include CSV importing unless it is essential.
+
+2. Make cost accounting reflect actual or estimated costs for
+   each type of Crustdata operation. Keep separate limits for
+   searches, enrichments and total permitted spending.
+
+3. Ensure public access cannot freely trigger paid Crustdata
+   calls. Synthetic mode must be the public default, and live
+   provider access must be controlled on the server.
+
+4. Propose an evidence model that tracks the source and
+   verification status of important company facts. Outreach
+   drafts must not state uncertain information as fact.
+
+5. Distinguish failures affecting individual prospects from
+   failures that prevent an entire pipeline stage from safely
+   continuing.
+
+6. Keep the first version focused on completing a run and
+   displaying the results. Treat streaming progress as a later
+   enhancement unless it is necessary for the MVP.
+
+7. Identify the smallest set of data-contract decisions that
+   my teammate and I must agree on before implementation.
+
+8. Identify which files belong to me and which are owned by
+   my teammate. Do not suggest editing src/core/types.ts until
+   we agree on its contract.
+
+9. Clarify the role of an LLM, if any, in the first version.
+   Avoid adding an LLM dependency or paid model calls without
+   an explicit decision.
+
+Return the revised plan, a list of blocking decisions and a
+recommended implementation order.
+
+Do not write code yet.
+</pasted_content id="bb62">
+
+---
+
+<pasted_content id="bb62">
+We are building SignalScout AI for neatHack 2026.
+
+I own:
+- src/app/**
+- src/core/agent/**
+
+My teammate owns:
+- src/core/types.ts
+- src/core/data/**
+- src/core/fixtures/**
+- src/core/observability/**
+- tests/**
+
+We are waiting for agreement on the shared data contract.
+
+For now, implement only the initial frontend shell and ICP form
+in my assigned areas.
+
+Requirements:
+
+1. Update the page metadata and layout to SignalScout AI.
+2. Create a clean, professional interface for a B2B prospect
+   discovery and qualification tool.
+3. Include form fields for the target industry, company size,
+   location, target company keywords and excluded domains.
+4. Include a synthetic-data mode for safe demonstration.
+5. Create an empty results area with placeholders for prospect
+   scores, evidence, budget usage and outreach drafts.
+6. Make the layout responsive.
+7. Keep the form and results components organized and reusable.
+8. Consult the relevant Next.js 16.4.0 documentation bundled
+   with the installed package before writing Next.js code.
+9. Follow the existing repository instructions.
+
+IMPORTANT:
+
+- Do not edit src/core/types.ts.
+- Do not edit files owned by my teammate.
+- Do not edit package.json, the lock file, .env or other shared
+  configuration files.
+- Do not implement the Crustdata client.
+- Do not make live API calls.
+- Do not guess the final shared data contract.
+- Do not commit or push anything.
+
+Before making changes, inspect the current repository status.
+After implementation, report every file changed and explain
+how I can run and verify the frontend locally.
+</pasted_content id="bb62">
+
+---
+
+<task-notification>
+<task-id>bmvl1qdv8</task-id>
+<tool-use-id>toolu_015f3S6got83xA45LiEoFudD</tool-use-id>
+<output-file>C:\Users\tymep\AppData\Local\Temp\claude\E--Event-Files-Neathacks-10thOct-mindstack-neathack\eb0222ff-63f7-4e9c-8aba-50e7ef11152a\tasks\bmvl1qdv8.output</output-file>
+<status>failed</status>
+<summary>Background command "Serve the production build on port 3123" failed with exit code 1</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bww9686gy</task-id>
+<tool-use-id>toolu_01BE8udHkxS4bULGFK2x8jAx</tool-use-id>
+<output-file>C:\Users\tymep\AppData\Local\Temp\claude\E--Event-Files-Neathacks-10thOct-mindstack-neathack\eb0222ff-63f7-4e9c-8aba-50e7ef11152a\tasks\bww9686gy.output</output-file>
+<status>failed</status>
+<summary>Background command "Serve the rebuilt app on port 3123" failed with exit code 1</summary>
+</task-notification>
