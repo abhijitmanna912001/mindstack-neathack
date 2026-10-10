@@ -10,7 +10,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "neatlogs": "^1.1.28",
     "next": "16.4.0",
+    "openai": "6.34.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
