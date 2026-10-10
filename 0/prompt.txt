@@ -1,0 +1,8 @@
+<pasted_content id="a4c2">
+Task: add neatlogs tracing for SignalScout. Touch ONLY src/core/observability/tracing.ts, scripts/hello-trace.ts, and package.json plus package-lock.json (the neatlogs dependency). Never read .env or print environment variables. No network calls except neatlogs export, no model calls.
+
+1. Install: npm install neatlogs@latest
+2. tracing.ts: export async function initTracing() that calls init({ apiKey: process.env.NEATLOGS_API_KEY, workflowName: 'signalscout' }) exactly once (module-level guard so repeated calls do nothing), and export async function closeTracing() that awaits flush() then shutdown(), for scripts only.
+3. scripts/hello-trace.ts: run a fake pipeline using the synthetic fixtures in src/core/fixtures and validateCompanies from src/core/data/validation.ts, with FixtureProvider from src/core/data/fixture-provider.ts. Wrap the entry in span({ kind: 'WORKFLOW', name: 'signalscout_run' }). Steps: search (kind TOOL, via FixtureProvider), validate (kind GUARDRAIL, the real validateCompanies), enrich (kind TOOL, via FixtureProvider), score (kind AGENT, stubbed). Use trace() inside validate to set span attributes for counts of valid, flagged and rejected records and issue codes. Call closeTracing() in a finally block.
+4. Do NOT run the script. Tell me the exact command to run it myself, and explain each design choice in a few bullets, including anything you were unsure about.
+</pasted_content id="a4c2">
