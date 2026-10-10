@@ -1,0 +1,15 @@
+<pasted_content id="77d0">
+Task: create the provider interface and the fixture provider. Create ONLY src/core/data/provider.ts, src/core/data/fixture-provider.ts and tests/fixture-provider.test.ts. Do not edit other files. Never read .env or print environment variables. No network calls, no new dependencies, no Next.js or neatlogs imports. Read src/core/types.ts and src/core/fixtures/companies.ts first.
+
+provider.ts: export interface CompanyProvider with three async methods:
+- autocompleteIndustry(query: string): Promise<ProviderResult<readonly string[]>>
+- searchCompanies(filters: SearchFilters, limit: number): Promise<ProviderResult<readonly RawCompany[]>>
+- enrichCompanies(linkedin_urls: readonly string[]): Promise<ProviderResult<readonly RawCompany[]>>
+ProviderResult<T> = { ok: true; data: T; cost_usd: number; calls: number } | { ok: false; error: ProviderError }. ProviderError has a category: "auth_failed" | "rate_limited" | "timeout" | "bad_request" | "no_match" | "budget_cap_reached" | "empty_or_partial" and a message. SearchFilters: country (string), industries (readonly string[]), employee_count_ranges (readonly string[]). Also export class BudgetGuard, constructed from RunConfig (max_search_results, max_enrichments), with canSearch(limit), canEnrich(count), recordSearch(n, cost), recordEnrich(n, cost) and snapshot() returning spent cost and counts. canSearch and canEnrich return false when a cap would be exceeded, and providers must return budget_cap_reached instead of making the call.
+
+fixture-provider.ts: class FixtureProvider implements CompanyProvider, using the synthetic fixtures, deterministic, cost_usd 0 by default but configurable per call so tests can simulate cost, using a BudgetGuard, and with optional failure injection (for example fail the Nth call with a given error category) so we can demonstrate recovery. enrichCompanies returns fixture records whose LinkedIn URL matches and returns no_match for the rest.
+
+Tests: caps respected, failure injection works, no_match for unknown URLs.
+
+Run npx vitest run and npx tsc --noEmit. Summarise in 6 bullets, including anything you were unsure about.
+</pasted_content id="77d0">
