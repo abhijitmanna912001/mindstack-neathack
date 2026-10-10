@@ -2,7 +2,7 @@ import { companySizeLabel, type IcpDraft } from "../../_lib/icp-form";
 
 function Chips({ items, empty }: { items: string[]; empty: string }) {
   if (items.length === 0) {
-    return <span className="text-sm text-slate-500 dark:text-slate-400">{empty}</span>;
+    return <span className="text-sm text-slate-600 dark:text-slate-300">{empty}</span>;
   }
   return (
     <ul className="flex flex-wrap gap-1.5">
@@ -34,7 +34,7 @@ export function IcpSummary({ icp }: { icp: IcpDraft }) {
     <dl className="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-x-4">
       {rows.map((row) => (
         <div key={row.label} className="contents">
-          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 sm:pt-0.5 dark:text-slate-400">
+          <dt className="text-xs font-medium uppercase tracking-wide text-slate-600 sm:pt-0.5 dark:text-slate-300">
             {row.label}
           </dt>
           <dd className="min-w-0">{row.value}</dd>

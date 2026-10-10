@@ -28,7 +28,7 @@ export function DataModeSelector({ defaultValue, error }: DataModeSelectorProps)
           <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
             Synthetic data
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-slate-600 dark:text-slate-300">
             Generated demo companies. No API calls and no credits spent.
           </span>
         </span>
@@ -46,7 +46,7 @@ export function DataModeSelector({ defaultValue, error }: DataModeSelectorProps)
           <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
             Live Crustdata
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-slate-600 dark:text-slate-300">
             Uses paid credits. Requires operator access and is not enabled in
             this build.
           </span>

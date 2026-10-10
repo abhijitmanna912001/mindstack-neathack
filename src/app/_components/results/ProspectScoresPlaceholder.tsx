@@ -12,7 +12,7 @@ export function ProspectScoresPlaceholder({ pending }: { pending: boolean }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[28rem] text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-xs font-medium text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <tr className="border-b border-slate-200 text-xs font-medium text-slate-600 dark:border-slate-800 dark:text-slate-300">
               {COLUMNS.map((column) => (
                 <th key={column} scope="col" className="py-2 pr-4 font-medium">
                   {column}

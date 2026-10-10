@@ -10,6 +10,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Page content width, used as max-w-page by the header, main and footer. */
+  --container-page: 75rem;
+  /* Small labels and helper text read better at 13px than Tailwind's 12px. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.5;
 }
 
 @media (prefers-color-scheme: dark) {

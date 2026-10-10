@@ -33,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AppHeader />
         {children}
         <footer className="border-t border-slate-200 dark:border-slate-800">
-          <p className="mx-auto w-full max-w-7xl px-4 py-4 text-xs text-slate-500 sm:px-6 lg:px-8 dark:text-slate-400">
+          <p className="mx-auto w-full max-w-page px-4 py-4 text-xs text-slate-600 sm:px-6 lg:px-8 dark:text-slate-300">
             SignalScout AI · neatHack 2026 prototype. Synthetic data only; no
             live provider calls are made.
           </p>

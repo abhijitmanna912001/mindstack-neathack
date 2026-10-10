@@ -17,8 +17,8 @@ export function fieldDescriptionIds(id: string, hint?: string, error?: string) {
 export function inputClassName(hasError: boolean) {
   return [
     "block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 shadow-xs",
-    "placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-0",
-    "dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500",
+    "placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-0",
+    "dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400",
     hasError
       ? "border-red-400 focus:border-red-500 focus:ring-red-500/30 dark:border-red-500/70"
       : "border-slate-300 focus:border-indigo-500 focus:ring-indigo-500/30 dark:border-slate-700",
@@ -48,7 +48,7 @@ export function FormField({
       </label>
       {children}
       {hint && !error && (
-        <p id={`${id}-hint`} className="text-xs text-slate-500 dark:text-slate-400">
+        <p id={`${id}-hint`} className="text-xs text-slate-600 dark:text-slate-300">
           {hint}
         </p>
       )}

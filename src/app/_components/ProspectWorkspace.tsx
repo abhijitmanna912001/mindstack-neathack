@@ -16,7 +16,7 @@ export function ProspectWorkspace() {
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,22.5rem)_minmax(0,1fr)] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,23.5rem)_minmax(0,1fr)]">
       <div className="lg:sticky lg:top-6">
         <IcpForm action={formAction} state={state} pending={pending} />
       </div>

@@ -13,8 +13,8 @@ export function BudgetUsagePlaceholder() {
         {METERS.map((meter) => (
           <li key={meter} className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between text-xs">
-              <span className="font-medium text-slate-700 dark:text-slate-300">{meter}</span>
-              <span className="tabular-nums text-slate-500 dark:text-slate-400">0 used</span>
+              <span className="font-medium text-slate-700 dark:text-slate-200">{meter}</span>
+              <span className="tabular-nums text-slate-600 dark:text-slate-300">0 used</span>
             </div>
             <div
               role="meter"
@@ -27,7 +27,7 @@ export function BudgetUsagePlaceholder() {
           </li>
         ))}
       </ul>
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-slate-600 dark:text-slate-300">
         Synthetic mode never calls Crustdata, so no credits are spent.
       </p>
     </Panel>

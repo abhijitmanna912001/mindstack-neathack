@@ -19,12 +19,12 @@ export function Panel({ title, description, badge, className, children }: PanelP
         <div className="flex min-w-0 flex-col gap-0.5">
           <h3
             id={headingId}
-            className="text-sm font-semibold text-slate-900 dark:text-slate-100"
+            className="text-[0.9375rem] font-semibold text-slate-900 dark:text-slate-100"
           >
             {title}
           </h3>
           {description && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-300">{description}</p>
           )}
         </div>
         {badge}
@@ -44,7 +44,7 @@ export function PlaceholderBadge({ children = "Awaiting run" }: { children?: Rea
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+    <p className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
       {children}
     </p>
   );
