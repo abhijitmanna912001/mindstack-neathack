@@ -1,0 +1,14 @@
+<pasted_content id="bb62">
+Create a new file named garvit-checkpoint.md in the root
+of this repository.
+
+The file must contain exactly one line:
+
+This is Garvit's first Entire checkpoint.
+
+Do not modify README.md or any other existing files.
+Do not run any Git commands.
+Do not commit or push changes.
+
+Tell me when the file has been created successfully.
+</pasted_content id="bb62">
