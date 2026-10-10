@@ -111,33 +111,68 @@ export interface Validation {
 }
 
 // ---------------------------------------------------------------------------
-// Layer 3: Assessment (model-written judgement, grounded in evidence)
+// Layer 3: Facts and Assessment (model-written judgement, grounded in facts)
 // ---------------------------------------------------------------------------
 
-// How much we trust a piece of evidence:
-// "given" = the user stated it in their request,
-// "extracted" = read from one raw field,
-// "cross_checked" = confirmed by two or more sources,
-// "uncertain" = a guess or weakly supported.
-export type EvidenceStatus =
-  | "given"
-  | "extracted"
-  | "cross_checked"
-  | "uncertain";
+// How much we trust a fact. Only deterministic code ever sets this; the model
+// may only reference existing fact ids and never assigns or changes a status.
+// "given" = reported directly by a provider or the user, unchanged.
+// "extracted" = pulled out of free text; not citeable until verified.
+// "cross_checked" = at least two independent facts agree, and those facts are
+//   listed in derived_from.
+// "uncertain" = conflicting or unsupported; never citeable.
+export type FactStatus = "given" | "extracted" | "cross_checked" | "uncertain";
 
-// One factual claim the assessment relies on.
-export interface Evidence {
-  // Short unique ID within the assessment, e.g. "e1".
+// Who produced a fact. Facts with provider "model" are never citeable.
+export type FactProvider =
+  | "crustdata"
+  | "fixture"
+  | "user_input"
+  | "derived"
+  | "model";
+
+// Where a fact came from.
+export interface FactSource {
+  // The system that produced the fact.
+  readonly provider: FactProvider;
+  // Which Crustdata operation returned it, when the provider is crustdata.
+  readonly operation?: "autocomplete" | "company_search" | "company_enrich";
+  // The provider's own ID for the record the fact came from.
+  readonly record_id?: string;
+  // When we received it, as an ISO 8601 timestamp.
+  readonly retrieved_at: string;
+  // Public URL backing the fact, if any.
+  readonly source_url?: string;
+}
+
+// One factual claim with its value, origin and trust level.
+export interface Fact<T> {
+  // Unique ID that scores and outreach drafts reference.
   readonly id: string;
+  // The machine-readable value, e.g. 120.
+  readonly value: T;
   // The claim in plain English, e.g. "Has about 120 employees".
   readonly claim: string;
-  // The raw fields this claim rests on, e.g. ["latest_headcount"].
-  // "cross_checked" evidence needs at least two fields; "given" or
-  // "extracted" evidence needs at least one.
-  readonly source_fields: readonly (keyof RawCompany)[];
-  // How trustworthy the claim is.
-  readonly status: EvidenceStatus;
+  // The raw field this fact rests on, e.g. "latest_headcount".
+  readonly field?: string;
+  // Where the fact came from.
+  readonly source: FactSource;
+  // How trustworthy the fact is. Set by deterministic code only.
+  readonly status: FactStatus;
+  // When the fact was true, as an ISO 8601 timestamp, if known.
+  readonly as_of?: string;
+  // For "cross_checked" facts: IDs of the facts that agree.
+  readonly derived_from?: readonly string[];
 }
+
+// A fact of any value type.
+export type AnyFact = Fact<unknown>;
+
+// Only facts with one of these statuses may be cited in outreach.
+export const CITEABLE_FACT_STATUSES: readonly FactStatus[] = [
+  "given",
+  "cross_checked",
+];
 
 // A score for one criterion from the user's request (e.g. "right size").
 export interface CriterionScore {
@@ -145,17 +180,18 @@ export interface CriterionScore {
   readonly criterion: string;
   // Score from 0 (no match) to 100 (perfect match).
   readonly score: number;
-  // Evidence IDs backing this score.
-  readonly evidence_ids: readonly string[];
+  // Fact IDs backing this score.
+  readonly fact_ids: readonly string[];
 }
 
 // A draft first message to the company.
-// Rule: it may only cite evidence whose status is "given" or "cross_checked".
+// Rule: it may only cite facts whose status is in CITEABLE_FACT_STATUSES
+// and whose provider is not "model".
 export interface OutreachDraft {
   // The message text.
   readonly body: string;
-  // IDs of the evidence items the message relies on.
-  readonly cited_evidence_ids: readonly string[];
+  // IDs of the facts the message relies on.
+  readonly cited_fact_ids: readonly string[];
 }
 
 // The model's overall view of how well a company fits the request.
@@ -164,11 +200,9 @@ export interface Assessment {
   readonly fit_score: number;
   // Score for each criterion.
   readonly criterion_scores: readonly CriterionScore[];
-  // All facts used, each with a trust level.
-  readonly evidence: readonly Evidence[];
   // Things the model could not confirm or is unsure about.
   readonly uncertainty_notes: readonly string[];
-  // Optional first-contact message. Absent if no safe evidence to cite.
+  // Optional first-contact message. Absent if no citeable fact exists.
   readonly outreach?: OutreachDraft;
 }
 
@@ -189,6 +223,8 @@ export interface Prospect {
   readonly raw: RawCompany;
   // Code-rule verdict.
   readonly validation: Validation;
+  // Every fact known about this company, each with a trust level.
+  readonly facts: readonly AnyFact[];
   // Model judgement, if one was made.
   readonly assessment?: Assessment;
 }
@@ -203,12 +239,31 @@ export interface RunConfig {
   readonly max_search_results: number;
   // Most companies to send to paid enrichment. Default 15.
   readonly max_enrichments: number;
+  // Model used for planning and assessment.
+  readonly model: string;
+  // Most LLM calls allowed in one run.
+  readonly max_llm_calls_per_run: number;
+  // Most output tokens allowed in one LLM call.
+  readonly max_output_tokens_per_call: number;
 }
 
-// Default limits used when the caller sets none.
+// Default limits used when the caller sets none. The model and LLM caps are
+// starting values to tune.
 export const DEFAULT_RUN_CONFIG: RunConfig = {
   max_search_results: 100,
   max_enrichments: 15,
+  model: "claude-haiku",
+  max_llm_calls_per_run: 20,
+  max_output_tokens_per_call: 1500,
+};
+
+// Smaller limits for development runs, to keep Crustdata spend low.
+export const DEV_RUN_CONFIG: RunConfig = {
+  max_search_results: 10,
+  max_enrichments: 2,
+  model: "claude-haiku",
+  max_llm_calls_per_run: 20,
+  max_output_tokens_per_call: 1500,
 };
 
 // How many companies reached each stage.
@@ -219,10 +274,16 @@ export interface RunCounts {
   readonly enriched: number;
   // Companies in the final results.
   readonly delivered: number;
+  // LLM calls made.
+  readonly llm_calls: number;
+  // Input tokens sent across all LLM calls.
+  readonly llm_input_tokens: number;
+  // Output tokens received across all LLM calls.
+  readonly llm_output_tokens: number;
 }
 
 // Pipeline step names, used for cost and timing breakdowns.
-export type RunStep = "search" | "validate" | "enrich" | "assess";
+export type RunStep = "plan" | "search" | "validate" | "enrich" | "assess";
 
 // Dollars spent in each step.
 export type RunCosts = Readonly<Record<RunStep, number>>;
