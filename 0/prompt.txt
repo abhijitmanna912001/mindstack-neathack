@@ -1,0 +1,108 @@
+<pasted_content id="bb62">
+We are continuing development of SignalScout AI for neatHack 2026.
+
+I have reviewed the current frontend running at localhost:3000.
+
+The existing design is good. Do not redesign the application.
+Make targeted improvements to the current implementation.
+
+MY OWNERSHIP:
+- src/app/**
+
+My teammate owns:
+- src/core/types.ts
+- src/core/data/**
+- src/core/fixtures/**
+- src/core/observability/**
+- tests/**
+
+OBJECTIVES
+
+1. Improve the desktop layout.
+
+The current content looks too narrow on a wide screen.
+
+Increase the main content max-width to approximately 1120-1200px,
+while keeping the layout centered and responsive.
+
+Keep the ICP form on the left and the results workspace on the right.
+
+Use a sensible layout ratio, with approximately 350-380px for the
+form and the remaining width for results.
+
+Do not stretch the content across the entire monitor.
+
+2. Improve readability.
+
+Slightly increase small labels and helper text where necessary.
+
+Improve the contrast of secondary text while preserving the
+current dark navy theme, purple primary action and subtle borders.
+
+Maintain a clear typographic hierarchy.
+
+3. Preserve the existing components.
+
+Keep the ICP form, prospect scores, evidence, budget usage and
+outreach sections.
+
+Do not remove existing fields or functionality.
+
+Keep the synthetic-data mode selected by default.
+
+Keep live Crustdata disabled and ensure the existing server-side
+protection remains unchanged.
+
+4. Preserve responsiveness.
+
+The layout should work at desktop, tablet and mobile widths.
+
+At smaller widths, the form and results should stack naturally.
+
+Avoid page-wide horizontal scrolling.
+
+5. Prepare for the upcoming pipeline integration.
+
+Do not invent prospect results, scores or API costs.
+
+Keep the existing honest empty states until the synthetic provider
+and agent pipeline are integrated.
+
+Do not connect Crustdata or make API calls.
+
+Do not implement scoring, model calls or backend integrations yet.
+
+6. Respect repository ownership.
+
+Do not edit src/core/types.ts or any files owned by my teammate.
+
+Do not modify package.json, the lockfile, .env, .gitignore,
+Next.js configuration or other shared files.
+
+Do not add dependencies.
+
+Follow CLAUDE.md and AGENTS.md and consult the installed
+Next.js 16.4.0 documentation if necessary.
+
+Before making changes, inspect the current Git status.
+
+After implementation:
+- Run npx tsc --noEmit
+- Run npm run lint
+- Run npm run build
+- List all modified files
+- Explain the visual changes
+- Confirm that no shared or teammate-owned files were modified
+
+Do not commit or push anything.
+</pasted_content id="bb62">
+
+---
+
+<task-notification>
+<task-id>b4w1c5yjc</task-id>
+<tool-use-id>toolu_011vNrTdHfU5s6UmoqGatgpS</tool-use-id>
+<output-file>C:\Users\tymep\AppData\Local\Temp\claude\E--Event-Files-Neathacks-10thOct-mindstack-neathack\eb0222ff-63f7-4e9c-8aba-50e7ef11152a\tasks\b4w1c5yjc.output</output-file>
+<status>failed</status>
+<summary>Background command "Serve the fresh production build on port 3123" failed with exit code 1</summary>
+</task-notification>

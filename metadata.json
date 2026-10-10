@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4KAC9DF21SSX10890WRDRS4",
+  "strategy": "manual-commit",
+  "branch": "garvit/frontend-shell",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/app/_components/AppHeader.tsx",
+    "src/app/_components/IcpForm.tsx",
+    "src/app/_components/ProspectWorkspace.tsx",
+    "src/app/_components/form/DataModeSelector.tsx",
+    "src/app/_components/form/FormField.tsx",
+    "src/app/_components/results/BudgetUsagePlaceholder.tsx",
+    "src/app/_components/results/IcpSummary.tsx",
+    "src/app/_components/results/Panel.tsx",
+    "src/app/_components/results/ProspectScoresPlaceholder.tsx",
+    "src/app/_components/results/ResultsPanel.tsx",
+    "src/app/_components/results/StatTile.tsx",
+    "src/app/error.tsx",
+    "src/app/globals.css",
+    "src/app/layout.tsx",
+    "src/app/page.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 42,
+    "cache_creation_tokens": 164800,
+    "cache_read_tokens": 3988961,
+    "output_tokens": 14945,
+    "api_call_count": 21
+  }
+}
