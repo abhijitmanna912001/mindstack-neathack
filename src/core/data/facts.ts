@@ -8,7 +8,6 @@ import type {
   FactSource,
   RawCompany,
   Validation,
-  ValidationIssue,
 } from "../types";
 import { normalizeDomain } from "./normalize";
 import { parseEmployeeRange } from "./validation";
