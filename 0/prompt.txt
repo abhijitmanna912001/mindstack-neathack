@@ -1,0 +1,20 @@
+<pasted_content id="7a58">
+Task: implement the validation layer for SignalScout. Create ONLY these files: src/core/data/normalize.ts, src/core/data/validation.ts, src/core/fixtures/companies.ts, tests/validation.test.ts. Do not edit src/core/types.ts or any other file. Never read .env or print environment variables. No network calls, no new dependencies (vitest is installed). No Next.js or neatlogs imports; plain TypeScript. Read src/core/types.ts first and use its types (RawCompany, Validation, ValidationIssue, ValidationIssueCode).
+
+normalize.ts: normalizeDomain(input: string): string (lowercase, strip protocol, www., path, query, trailing slash or dot; return "" if empty) and normalizeLinkedInUrl(input: string): string (lowercase, strip protocol, www, query, trailing slash).
+
+validation.ts: export validateCompanies(raws: readonly RawCompany[]): readonly Validation[], aligned by index, pure and deterministic. Each rule produces a ValidationIssue with code, field and a plain-English reason:
+- missing_name: name is empty after trimming.
+- missing_domain: primary_domain is empty.
+- junk_website: the website host is a messaging, link-shortener or social host. Put the list in one exported constant JUNK_HOSTS: wa.link, wa.me, bit.ly, linktr.ee, facebook.com, instagram.com, t.me.
+- missing_linkedin: professional_network_url is empty.
+- duplicate_domain: two or more records share the same normalised domain, or, when a record has no domain, the same normalised LinkedIn URL. Keep the first occurrence; later ones get the issue with related_company_id set to the kept record's crustdata_company_id.
+- size_headcount_mismatch: only when latest_headcount and employee_count_range are both present and the headcount is outside the range; also when revenue_range and latest_headcount are both present and implied revenue per employee (lower bound of the range divided by headcount) exceeds an exported constant MAX_REVENUE_PER_EMPLOYEE_USD = 500000. Parsing helpers must skip the rule on missing or odd formats and never throw.
+Status: rejected if name, domain and LinkedIn URL are all missing, or the record is a later duplicate; flagged if it has any other issue; valid otherwise.
+
+fixtures/companies.ts: about 10 SYNTHETIC companies with invented names and invented domains (no real firms, no real street addresses) covering: a clean record, missing name and domain but with a LinkedIn URL, a wa.link website, two records sharing a domain, a record with no domain but a website, a messy long name, headcount outside its range, implausible revenue per employee, and a record with nothing identifying.
+
+tests/validation.test.ts: vitest tests, one per rule, plus the status logic and a test that odd inputs never throw.
+
+Run npx vitest run and npx tsc --noEmit and fix failures. Then summarise in about 8 bullets the design decisions and anything you were unsure about. Do nothing else.
+</pasted_content id="7a58">
