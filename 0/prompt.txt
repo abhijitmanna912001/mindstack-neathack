@@ -1,0 +1,1 @@
+Add a short "How it works" section to README.md with a placeholder sentence.
