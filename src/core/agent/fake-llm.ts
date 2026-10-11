@@ -3,6 +3,7 @@
 // company named in the prompt. Costs go through the same resolveLlmCost()
 // as the real adapter, so the labels match.
 
+import { readFactsPrompt } from "./facts-prompt";
 import {
   type LlmKeySpend,
   type LlmTokenUsage,
@@ -59,7 +60,9 @@ export class FakeLlmClient implements LlmClient {
   private max_in_flight_seen = 0;
 
   constructor(options: FakeLlmClientOptions = {}) {
-    this.respond = options.respond ?? defaultFakeAssessment;
+    // Facts prompts get a facts-based reply; any other prompt (the baseline's
+    // raw-record prompt) gets defaultFakeAssessment().
+    this.respond = options.respond ?? defaultFakeFactsAssessment;
     this.delay_ms = options.delay_ms ?? 0;
     this.records_llm_spans = options.records_llm_spans ?? false;
   }
@@ -108,6 +111,30 @@ export class FakeLlmClient implements LlmClient {
       this.in_flight -= 1;
     }
   }
+}
+
+// Answers a facts-only prompt (see facts-prompt.ts) with a well-formed,
+// well-behaved assessment: every requested criterion scored, references to
+// listed facts only, and outreach citing one citeable fact. Falls back to
+// defaultFakeAssessment() for any other prompt.
+export function defaultFakeFactsAssessment(request: LlmRequest): string {
+  const prompt = readFactsPrompt(request.messages);
+  if (!prompt) return defaultFakeAssessment(request);
+  const { criteria, data } = prompt;
+  const anyFact = data.facts[0]?.id;
+  const cited = data.facts.find((f) => f.citeable);
+  return JSON.stringify({
+    fit_score: 40 + (data.company_id % 50),
+    criterion_scores: criteria.map((criterion) => ({
+      criterion,
+      score: 60 + (data.company_id % 40),
+      fact_ids: anyFact ? [anyFact] : [],
+    })),
+    uncertainty_notes: ["Synthetic assessment from the fake model client."],
+    ...(cited
+      ? { outreach: { body: `Hello from SignalScout. I noticed: ${cited.claim}.`, cited_fact_ids: [cited.id] } }
+      : {}),
+  });
 }
 
 // Reads the company id from the prompt's JSON record and returns a stable

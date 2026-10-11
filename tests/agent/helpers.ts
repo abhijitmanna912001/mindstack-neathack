@@ -8,7 +8,7 @@ import type {
   PipelineTracer,
   TraceAttributeValue,
 } from "../../src/core/agent/tracer";
-import type { IcpInput, PipelineDeps } from "../../src/core/agent/types";
+import type { IcpInput, ImprovedPipelineDeps } from "../../src/core/agent/types";
 import {
   FixtureProvider,
   type FixtureProviderOptions,
@@ -18,7 +18,12 @@ import type {
   ProviderResult,
   SearchFilters,
 } from "../../src/core/data/provider";
-import type { RawCompany, RunConfig } from "../../src/core/types";
+import { DEV_RUN_CONFIG, type RawCompany, type RunConfig } from "../../src/core/types";
+
+// The evaluation limits for both evidence runs: 10 searched, 5 enrichments,
+// and DEV_RUN_CONFIG's model and call caps. Passed as options; the shared
+// RunConfig constants are unchanged.
+export const EVIDENCE_CONFIG: RunConfig = { ...DEV_RUN_CONFIG, max_enrichments: 5 };
 
 // Matches every fixture: no industry, size or location filter.
 export const OPEN_ICP: IcpInput = {
@@ -120,7 +125,8 @@ export interface Harness {
   readonly provider: SpyProvider;
   readonly llm: FakeLlmClient;
   readonly roots: RecordedSpan[];
-  readonly deps: PipelineDeps;
+  // Satisfies both pipelines: the baseline ignores fact_provider.
+  readonly deps: ImprovedPipelineDeps;
 }
 
 // One run's worth of collaborators. The fixture provider's caps come from
@@ -152,6 +158,7 @@ export function harness(
       provider,
       budget: fixture.budget,
       llm,
+      fact_provider: "fixture",
       tracer,
       trace_id: "trace-test",
       now: () => (clock += 1),

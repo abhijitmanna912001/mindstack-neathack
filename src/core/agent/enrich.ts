@@ -1,5 +1,6 @@
-// Enriches searched companies in search order, within the enrichment cap.
-// Naive on purpose: no ranking, no duplicate checks, one batch call.
+// Enriches companies in the order given, within the enrichment cap. The
+// baseline passes search order; the improved pipeline passes its priority
+// order. No ranking or duplicate checks of its own; one batch call.
 
 import { normalizeLinkedInUrl } from "../data/normalize";
 import type { CompanyProvider } from "../data/provider";
@@ -13,6 +14,8 @@ export interface EnrichStepResult {
   readonly enriched: ReadonlyMap<number, RawCompany>;
   readonly issues: readonly PipelineIssue[];
   readonly requested: number;
+  // Indices (into `companies`) of the companies sent to the enrich call.
+  readonly requested_indices: readonly number[];
   readonly cost_usd: number;
   readonly calls: number;
 }
@@ -44,7 +47,7 @@ export async function enrichInSearchOrder(
         message: "No enrichments left in this run's budget.",
       });
     }
-    return { outcomes, enriched, issues, requested: 0, cost_usd: 0, calls: 0 };
+    return { outcomes, enriched, issues, requested: 0, requested_indices: [], cost_usd: 0, calls: 0 };
   }
 
   const result = await provider.enrichCompanies(
@@ -71,7 +74,7 @@ export async function enrichInSearchOrder(
       message: `Enrichment of ${selected.length} companies returned ${category}: ${result.error.message}`,
       error_category: category,
     });
-    return { outcomes, enriched, issues, requested: selected.length, cost_usd: 0, calls: 0 };
+    return { outcomes, enriched, issues, requested: selected.length, requested_indices: selected, cost_usd: 0, calls: 0 };
   }
 
   // Match each request to a returned record by id, then by LinkedIn URL.
@@ -108,6 +111,7 @@ export async function enrichInSearchOrder(
     enriched,
     issues,
     requested: selected.length,
+    requested_indices: selected,
     cost_usd: result.cost_usd,
     calls: result.calls,
   };
