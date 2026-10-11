@@ -70,6 +70,42 @@ Notes:
 - Zero suppressed outreach in a real run is not a guard catch: the guards verified every draft and found nothing to remove. The guards firing is shown by the deterministic cases and unit tests.
 - Per assessment the improved prompt costs more (longer facts prompt); the total is lower because only enriched companies are assessed.
 
+### Live data with the real model
+
+Source: Crustdata live API and the real model (claude-haiku through the hackathon gateway), neatlogs tracing off, same records for both pipelines, company ids ascending.
+Slice: Staffing and Recruiting, India, 11-50 and 51-200 employees, first 10 by company id ascending (6779 companies match the filters).
+
+The same 10 live records were used for both pipelines. Each pipeline ran once, with tracing off. Only counts are reported, and company records are never stored.
+
+Privacy: Real company profiles were sent to the model gateway in these runs. No company record is stored in the repository, in the run reports or in any trace.
+
+Searched: 10. Enriched: 5. Validation after enrichment: valid 7, flagged 3, rejected 0. Provider cost, measured, per run (USD): 3.69.
+
+| Measure | Baseline | Improved |
+|---|---|---|
+| Assessed | 10 | 5 |
+| Assessed, valid | 7 | 2 |
+| Assessed, flagged | 3 | 3 |
+| Model calls | 10 | 5 |
+| Tokens in | 8239 | 8300 |
+| Tokens out | 3306 | 1870 |
+| Model cost (USD) | 0.0272 | 0.0194 |
+| Outreach drafts | 10 | 5 |
+| Cited fact ids | 28 | 21 |
+| Cited, not citeable | 4 | 0 |
+| Drafts with violations | 4 | 0 |
+| Guard warnings (uncertain fact reference) | n/a | 6 |
+| Guard errors | n/a | 0 |
+| Outreach suppressed | n/a | 0 |
+| Assessments failed | n/a | 0 |
+
+Notes:
+
+- One run per pipeline on 10 live records, so this is a small sample, not a benchmark.
+- The same three companies were flagged in both runs by a zero-tolerance size rule whose magnitude was not analysed (see the caveat in the live-data section).
+- Cited but not citeable means the model cited a fact id that is not one of our fact ids for that company; it can mean an invented field or a different field name.
+- Per assessment the improved prompt costs more; the total is lower because only enriched companies are assessed.
+
 ## How the guards work
 
 ### Validation rules (`src/core/data/validation.ts`)
@@ -110,7 +146,7 @@ Neither calls a model and neither changes a fact's status.
 - **Caps.** `RunConfig` limits search results, enrichments, model calls per run (20) and output tokens per call (1500). The evidence runs use 10 searched and 5 enriched. Defaults are 100 and 15; the `dev` config uses 10 and 2.
 - **Budget guard.** `BudgetGuard` is checked before every paid search and enrichment call in the Crustdata provider.
 - **Spend flags.** The runner refuses `--provider crustdata` or `--llm real` without `--confirm-spend`, and checks that the needed key is present before anything is built.
-- **Per-run model cost cap and shared-key spend threshold: not implemented.** `src/core/agent/llm-policy.ts` states that both are "not yet agreed". The gateway key spend header is read and recorded, but nothing stops a run based on it. The model-call count cap is the only model limit enforced.
+- **Model usage limits.** The model-call count is the only per-run model usage cap, and the per-request output-token limit is also enforced. Dollar-denominated model spend caps and shared-key spend thresholds are not implemented: `src/core/agent/llm-policy.ts` states that both are "not yet agreed". The gateway key spend header is read and recorded, but nothing stops a run based on it.
 - **Tracing is off for real-data runs.** `--trace on` with `--provider crustdata` is refused, and tracing is always off for Crustdata runs.
 - **Reports hold counts and ids only.** Run reports in `runs/` contain counts, ids, costs, issue codes, tokens and timings. No company records, keys or headers.
 - **Keys are never in the repo.** `.env` and `runs/` are git-ignored. Keys are read from environment variables.
@@ -213,7 +249,7 @@ Ownership is taken from commit counts per folder, not from a formal assignment.
 - Provider cost in fixture runs is simulated at measured prices.
 - The size rule has zero tolerance and the magnitude of the mismatches was not analysed.
 - There is one scenario.
-- The real-data run used a fake model.
+- The first live-data run used a fake model. A second pair of live runs used the real model through the hackathon gateway, which means real company profiles were sent to that gateway. Each is a single run on 10 companies.
 - A neatlogs processing incident on Oct 11 was resolved the same day.
 - No per-run model cost cap or shared-key spend threshold is enforced (see Safety and spend controls).
 - Run reports are local and not committed, so the numbers in `evidence/summary.json` cannot be re-derived from the repo alone.

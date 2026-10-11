@@ -123,7 +123,7 @@
     "provider_cost_usd_measured_per_run": 3.69,
     "notes": [
       "One run per pipeline on 10 live records, so this is a small sample, not a benchmark.",
-      "The same three companies were flagged in both runs by a zero-tolerance size rule whose magnitude was not analysed (see real_data.caveat).",
+      "The same three companies were flagged in both runs by a zero-tolerance size rule whose magnitude was not analysed (see the caveat in the live-data section).",
       "Cited but not citeable means the model cited a fact id that is not one of our fact ids for that company; it can mean an invented field or a different field name.",
       "Per assessment the improved prompt costs more; the total is lower because only enriched companies are assessed."
     ]
