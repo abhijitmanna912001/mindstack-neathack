@@ -345,6 +345,61 @@ describe("errors", () => {
     expect(t.calls.length).toBe(1);
   });
 
+  const body402 = {
+    error: {
+      type: "insufficient_credits",
+      message: "This API key's monthly credit limit has been exhausted. It resets on 2026-11-01.",
+      metadata: [],
+    },
+  };
+
+  it("maps a 402 on search to budget_cap_reached with one call, no sleep and no spend", async () => {
+    const t = make([{ status: 402, json: body402, headers: { "x-secret": "HDR-VALUE" } }]);
+    const r = await t.provider.searchCompanies(open, 1);
+    expect(!r.ok && r.error.category).toBe("budget_cap_reached");
+    expect(!r.ok && r.error.message).toBe("Crustdata key budget exhausted");
+    expect(t.calls.length).toBe(1);
+    expect(t.waits).toEqual([]);
+    expect(t.budget.snapshot().cost_usd).toBe(0);
+  });
+
+  it("stops after a 402 on the second enrich chunk and keeps the first chunk", async () => {
+    const urls = Array.from({ length: 60 }, (_, i) => `https://www.linkedin.com/company/c${i}`);
+    const first = urls.slice(0, 25).map((u, i) => enrichElement(u, [{ score: 1, id: i + 1 }]));
+    const t = make([{ json: first }, { status: 402, json: body402 }, { json: first }]);
+    const r = await t.provider.enrichCompanies(urls);
+    expect(t.calls.length).toBe(2);
+    expect(t.waits).toEqual([]);
+    expect(r.ok && r.data.length).toBe(25);
+    expect(r.ok && r.calls).toBe(2);
+    expect(r.ok && r.cost_usd).toBeCloseTo(25 * ENRICH_PRICE);
+    expect(t.budget.snapshot().enriched).toBe(25);
+  });
+
+  it("returns the budget error when the first enrich chunk is a 402", async () => {
+    const t = make([{ status: 402, json: body402 }]);
+    const r = await t.provider.enrichCompanies(["a"]);
+    expect(!r.ok && r.error.category).toBe("budget_cap_reached");
+    expect(t.calls.length).toBe(1);
+    expect(t.budget.snapshot().cost_usd).toBe(0);
+  });
+
+  it("keeps 402 body text, dates and headers out of the message", async () => {
+    const t = make([{ status: 402, json: body402, headers: { "x-secret": "HDR-VALUE" } }]);
+    const results = [
+      await t.provider.autocompleteIndustry("q"),
+      await t.provider.searchCompanies(open, 1),
+      await t.provider.enrichCompanies(["a"]),
+    ];
+    for (const r of results) {
+      const message = !r.ok ? r.error.message : "";
+      expect(message).toBe("Crustdata key budget exhausted");
+      for (const leak of ["insufficient_credits", "monthly", "2026-11-01", "HDR-VALUE", KEY]) {
+        expect(message).not.toContain(leak);
+      }
+    }
+  });
+
   it("retries a 429 with 1s then 2s waits and then succeeds", async () => {
     const t = make([{ status: 429 }, { status: 429 }, { json: { companies: [searchItem(1)] } }]);
     const r = await t.provider.searchCompanies(open, 1);

@@ -235,6 +235,8 @@ export class CrustdataProvider implements CompanyProvider {
           return err("empty_or_partial", `HTTP ${status} unreadable response`, false);
         }
       }
+      // 402 means the key's credit limit is used up. Fixed message, never retried.
+      if (status === 402) return err("budget_cap_reached", "Crustdata key budget exhausted", false);
       if (status === 401 || status === 403) return err("auth_failed", `HTTP ${status} auth_failed`, false);
       if (status === 429) {
         return {
