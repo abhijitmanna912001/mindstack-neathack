@@ -56,12 +56,7 @@ export type LiveBody =
       readonly status: "ok";
       readonly mode: CodeMode;
       readonly results: unknown;
-      readonly usage: {
-        readonly runsRemaining: number;
-        readonly searched: number;
-        readonly enriched: number;
-        readonly providerCostUsd: number;
-      };
+      readonly usage: { readonly runsRemaining: number };
       readonly notices: readonly string[];
     }
   | { readonly status: "invalid_request"; readonly field: string; readonly message: string }
@@ -317,6 +312,11 @@ export async function runLive(
 
   // The kill switch only stops live-mode codes; synthetic codes never read it.
   if (reserved.mode === "live") {
+    // Keys missing or live not allowed by the runtime fail-safe: do not attempt the run.
+    if (deps.live === null) {
+      await giveBack(store, reserved.runId);
+      return simple(503, "live_disabled");
+    }
     let enabled: boolean;
     try {
       enabled = await store.isLiveEnabled();
@@ -409,7 +409,7 @@ async function runSynthetic(reserved: Reserved, deps: LiveDeps, failed: Failed):
     status: "ok",
     mode: "synthetic",
     results,
-    usage: { runsRemaining: reserved.runsRemaining, searched, enriched, providerCostUsd: 0 },
+    usage: { runsRemaining: reserved.runsRemaining },
     notices,
   });
 }
@@ -518,7 +518,7 @@ async function runLiveMode(
     status: "ok",
     mode: "live",
     results,
-    usage: { runsRemaining: reserved.runsRemaining, searched, enriched, providerCostUsd },
+    usage: { runsRemaining: reserved.runsRemaining },
     notices: [...notices, ...noticesFromIssues(result.issues)],
   });
 }

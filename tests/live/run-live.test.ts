@@ -434,8 +434,7 @@ describe("runLive: synthetic mode", () => {
     expect(body.notices).toEqual(expect.arrayContaining([...SYNTHETIC_NOTICES]));
     expect(body.results).toMatchObject({ fakeResults: true, mode: "synthetic", model: "fake" });
     expect((body.results as { prospects: number }).prospects).toBeGreaterThan(0);
-    expect(body.usage).toMatchObject({ runsRemaining: 2, providerCostUsd: 0 });
-    expect(body.usage.searched).toBe((body.results as { searched: number }).searched);
+    expect(body.usage).toEqual({ runsRemaining: 2 });
     expect(onlyRun(h).status).toBe("completed");
     expectNoLeaks(out);
   });
@@ -506,13 +505,12 @@ describe("runLive: live mode", () => {
     expect(body.results).toMatchObject({ fakeResults: true, mode: "live", model: "claude-haiku" });
     expect(body.notices.some((n) => n.includes("Staffing and Recruiting"))).toBe(true);
     expect(body.notices.some((n) => n.startsWith("Synthetic demo"))).toBe(false);
-    expect(body.usage.searched).toBe(10);
-    expect(body.usage.enriched).toBeGreaterThan(0);
-    expect(body.usage.providerCostUsd).toBeGreaterThan(0);
-    expect(body.usage.runsRemaining).toBe(2);
+    expect(body.usage).toEqual({ runsRemaining: 2 });
     const run = onlyRun(h);
     expect(run.status).toBe("completed");
     expect(run.outcome?.searched).toBe(10);
+    expect(run.outcome?.enriched).toBeGreaterThan(0);
+    expect(run.outcome?.providerCostUsd).toBeGreaterThan(0);
     expectNoLeaks(out);
   });
 
@@ -573,13 +571,25 @@ describe("runLive: live mode", () => {
     expectNoLeaks(out, ["upstream said KEY"]);
   });
 
-  it("releases the run when live configuration is missing", async () => {
+  it("returns 503 live_disabled for a live code when live dependencies are null, releasing the run and constructing no factory", async () => {
     const h = await harness({ live: null });
+    const release = vi.spyOn(h.store, "releaseRun");
     const out = await go(h, LIVE_CODE);
-    expect(out.httpStatus).toBe(502);
-    expect(out.body).toMatchObject({ status: "run_failed" });
+    expect(out.httpStatus).toBe(503);
+    expect(out.body).toEqual({ status: "live_disabled", message: "Live runs are switched off right now." });
+    expect(release).toHaveBeenCalledOnce();
     expect(h.createProvider).not.toHaveBeenCalled();
+    expect(h.createLlm).not.toHaveBeenCalled();
+    expect(h.toResults).not.toHaveBeenCalled();
     expect(onlyRun(h).status).toBe("released");
+  });
+
+  it("still runs a synthetic code normally when live dependencies are null", async () => {
+    const h = await harness({ live: null });
+    const out = await go(h, CODE);
+    expect(out.httpStatus).toBe(200);
+    expect(out.body).toMatchObject({ status: "ok", mode: "synthetic" });
+    expect(h.createProvider).not.toHaveBeenCalled();
   });
 
   it("releases the run when a factory throws, without leaking the error", async () => {

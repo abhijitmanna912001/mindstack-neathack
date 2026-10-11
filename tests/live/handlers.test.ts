@@ -204,7 +204,8 @@ describe("runtime fail-safe", () => {
     const res = await createLiveHandlers(runtimeOf(store, built)).POST(
       post(JSON.stringify({ code: "LIVE-CODE", icp: ICP })),
     );
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ status: "live_disabled" });
     expect(createProvider).not.toHaveBeenCalled();
     expect(createLlm).not.toHaveBeenCalled();
     const [run] = [...store.runs.values()];
