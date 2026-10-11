@@ -160,6 +160,20 @@ Cost summary:
 
 Each run writes `runs/<timestamp>-<label>.json`.
 
+## Results page
+
+Run `npm run dev`, then open http://localhost:3000/results.
+
+It shows:
+
+- The official fixture evidence, read from `evidence/summary.json`.
+- The live-data validation counts, with their caveat.
+- A separate synthetic guardrail demonstration. A deterministic fake model injects an unsupported number into one outreach, and the claim check suppresses it.
+
+Only synthetic mode is supported. Any other mode, for example `?mode=live`, is rejected on the server before anything is built. The page runs the real improved pipeline on fixtures with the fake model, makes no external calls and reads no environment variables. An import-guard test enforces this.
+
+`evidence/summary.json` is bundled at build time, so rebuild or restart the dev server after editing it.
+
 ## Tests
 
 ```bash
@@ -179,7 +193,7 @@ Tests are in `tests/` (validation, facts, providers, runner metrics) and `tests/
 
 ## Repository layout
 
-| Path | Contents | Owner (by git history) |
+| Path | Contents | Primary contributors (approx., by commit history) |
 |---|---|---|
 | `src/app/` | Next.js frontend: ICP form, results | Garvit Mathur (mostly) |
 | `src/core/agent/` | Pipelines, prompts, assessment checks, model clients | Garvit Mathur (mostly); Abhijit Manna for cost, tracing and metrics |
@@ -203,6 +217,7 @@ Ownership is taken from commit counts per folder, not from a formal assignment.
 - A neatlogs processing incident on Oct 11 was resolved the same day.
 - No per-run model cost cap or shared-key spend threshold is enforced (see Safety and spend controls).
 - Run reports are local and not committed, so the numbers in `evidence/summary.json` cannot be re-derived from the repo alone.
+- The Crustdata provider retries HTTP requests (up to 2 retries on 429, 5xx and network errors) inside its post method without rechecking the budget before each retry, so a retry after a lost response could repeat a billable call, up to three attempts for one chunk. We did not observe this: the Crustdata usage page matched our expected credits exactly after the real runs, but we did not log HTTP attempts. Budget checks happen once per logical operation (before each search and before each enrichment chunk).
 
 ## Team
 

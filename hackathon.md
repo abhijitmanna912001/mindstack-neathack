@@ -43,6 +43,7 @@ Times are IST (+05:30).
 - 14:05 to 14:09: Reported outreach kept and citation metrics for both pipelines, added a final-record validation block to the runner, and added the evidence summary counts for the fixture runs.
 - 15:06: Added the real-data counts to the evidence summary.
 - 15:48: Added the neatlogs trace exports for the two official runs.
+- 15:32 to 16:06: Built the results page at `/results` (synthetic mode only, official evidence from `evidence/summary.json`, live-data validation counts, guardrail demo), then merged pull request #5. Commits: [bb6452b](https://entire.io/gh/abhijitmanna912001/mindstack-neathack/commit/bb6452bab1a28720bbe2e09d1d156c1d419a34cd) (build results UI), [d8a9ea1](https://entire.io/gh/abhijitmanna912001/mindstack-neathack/commit/d8a9ea118d1c1e88bd9e0fda7d84301d1c2da4d1) (live-data evidence), [d47b31f](https://entire.io/gh/abhijitmanna912001/mindstack-neathack/commit/d47b31f6a1c5ea6424571d058824c60de67da7af) (README and build log, Entire-Checkpoint 01M4N7QW6CQ23Y5C501EBFKH0B), merge [7f3642e](https://entire.io/gh/abhijitmanna912001/mindstack-neathack/commit/7f3642e18c5c4045c473e2e4498a2b82eb0fb956). Only d47b31f carries an `Entire-Checkpoint` trailer; the other links are built from the sha and are not verified to open.
 
 ## Evidence
 
