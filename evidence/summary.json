@@ -1,26 +1,82 @@
 {
   "scenario": "Synthetic fixtures with known defects, claude-haiku at temperature 0, 10 searched and 5 enriched in both runs",
-  "source_reports": ["baseline-final", "improved-final"],
+  "source_reports": [
+    "baseline-final",
+    "improved-final"
+  ],
   "provider_cost_basis": "simulated at measured Crustdata prices",
   "baseline": {
-    "enrichments": 5, "wasted_enrichments": 1, "valid_companies_enriched": 2,
-    "assessed": 10, "assessed_valid": 3, "assessed_flagged": 5, "assessed_should_be_rejected": 2,
-    "model_calls": 10, "tokens_in": 5478, "tokens_out": 2232,
-    "model_cost_usd": 0.0183, "provider_cost_usd": 3.69,
-    "outreach_drafts": 8, "cited_fact_ids": 22, "cited_not_citeable": 4, "drafts_with_violations": 3
+    "enrichments": 5,
+    "wasted_enrichments": 1,
+    "valid_companies_enriched": 2,
+    "assessed": 10,
+    "assessed_valid": 3,
+    "assessed_flagged": 5,
+    "assessed_should_be_rejected": 2,
+    "model_calls": 10,
+    "tokens_in": 5478,
+    "tokens_out": 2232,
+    "model_cost_usd": 0.0183,
+    "provider_cost_usd": 3.69,
+    "outreach_drafts": 8,
+    "cited_fact_ids": 22,
+    "cited_not_citeable": 4,
+    "drafts_with_violations": 3
   },
   "improved": {
-    "enrichments": 5, "wasted_enrichments": 0, "valid_companies_enriched": 3,
-    "assessed": 5, "assessed_valid": 3, "assessed_flagged": 2, "assessed_should_be_rejected": 0,
-    "rejected_before_enrichment": 1, "duplicates_removed": 1,
-    "model_calls": 5, "tokens_in": 5052, "tokens_out": 1167,
-    "model_cost_usd": 0.012, "provider_cost_usd": 3.69,
-    "outreach_drafts": 5, "cited_fact_ids": 13, "cited_not_citeable": 0, "drafts_with_violations": 0,
-    "assessments_failed": 0, "outreach_suppressed": 0, "guard_findings": 0
+    "enrichments": 5,
+    "wasted_enrichments": 0,
+    "valid_companies_enriched": 3,
+    "assessed": 5,
+    "assessed_valid": 3,
+    "assessed_flagged": 2,
+    "assessed_should_be_rejected": 0,
+    "rejected_before_enrichment": 1,
+    "duplicates_removed": 1,
+    "model_calls": 5,
+    "tokens_in": 5052,
+    "tokens_out": 1167,
+    "model_cost_usd": 0.012,
+    "provider_cost_usd": 3.69,
+    "outreach_drafts": 5,
+    "cited_fact_ids": 13,
+    "cited_not_citeable": 0,
+    "drafts_with_violations": 0,
+    "assessments_failed": 0,
+    "outreach_suppressed": 0,
+    "guard_findings": 0
   },
   "notes": [
     "Zero suppressed outreach in a real run is not a guard catch: the guards verified every draft and found nothing to remove. The guards firing is shown by the deterministic cases and unit tests.",
     "Per assessment the improved prompt costs more (longer facts prompt); the total is lower because only enriched companies are assessed."
   ],
-  "real_data": null
+  "real_data": {
+    "source": "Crustdata live API, fake model (no model calls), neatlogs tracing off, same records for both pipelines",
+    "slice": "Staffing and Recruiting, India, 11-50 and 51-200 employees, first 10 by company id ascending (6779 companies match the filters)",
+    "searched": 10,
+    "enriched_in_both_pipelines": 5,
+    "search_stage_validation": {
+      "valid": 10,
+      "flagged": 0,
+      "rejected": 0
+    },
+    "after_enrichment_validation": {
+      "valid": 7,
+      "flagged": 3,
+      "rejected": 0
+    },
+    "changed_by_enrichment": {
+      "valid_to_flagged": 3
+    },
+    "rules_fired": {
+      "size_headcount_mismatch:latest_headcount": 3
+    },
+    "baseline_revalidates_after_enrichment": false,
+    "improved_assessed": {
+      "valid": 2,
+      "flagged": 3
+    },
+    "provider_cost_usd_measured_per_run": 3.69,
+    "caveat": "Flagged by a zero-tolerance rule (headcount outside the stated size band by any amount). The magnitude of the mismatches has not been analysed, so this is a rule outcome, not proof that the data is wrong."
+  }
 }
