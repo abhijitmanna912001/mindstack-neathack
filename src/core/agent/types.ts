@@ -213,10 +213,12 @@ export interface ImprovedRunMetrics {
   // Later duplicates removed (duplicate_domain), at search or after enrichment.
   readonly duplicates_removed: IdCount;
   readonly enrichment: {
-    // Not rejected at search, so allowed into enrichment.
+    // Not rejected at search and has a LinkedIn URL. Ids in search order.
     readonly eligible: IdCount;
-    // Sent to the enrich call (eligible, has a LinkedIn URL, within the cap).
+    // Sent to the enrich call, within the cap. Ids in the order sent:
+    // "valid" companies first, then "flagged", each in search order.
     readonly requested: IdCount;
+    // Returned by the enrich call. Ids in search order.
     readonly enriched: IdCount;
   };
   readonly assessments_failed: IdCount & {

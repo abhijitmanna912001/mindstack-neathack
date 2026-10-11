@@ -1,7 +1,7 @@
 // Improved pipeline: plan -> search -> validate_companies -> deduplicate ->
-// enrich (eligible, unique companies only) -> validate_companies again on the
-// enriched records -> build_facts -> assess from facts only ->
-// validate_assessment -> check_claims.
+// enrich (eligible, unique companies; "valid" before "flagged") ->
+// validate_companies again on the enriched records -> build_facts -> assess
+// from facts only -> validate_assessment -> check_claims.
 //
 // Same options and PipelineResult as runBaselinePipeline, so a runner can
 // switch between them; its deps additionally require fact_provider.
@@ -34,6 +34,11 @@ import type {
   PipelineOptions,
   PipelineResult,
 } from "./types";
+
+// Validation's own LinkedIn rule: a record without one gets missing_linkedin.
+function hasLinkedIn(validation: Validation): boolean {
+  return !validation.issues.some((issue) => issue.code === "missing_linkedin");
+}
 
 function isDuplicate(validation: Validation): boolean {
   return (
@@ -162,28 +167,46 @@ export async function runImprovedPipeline(
       ),
     );
 
-    // 4. Deduplicate: rejected records, later duplicates included, leave the
-    // enrichment candidates. validateCompanies() already decided which copy
-    // of a duplicate is kept (the first one).
-    const eligible = await recorder.time("validate", () =>
+    // 4. Deduplicate and prioritise. Rejected records (later duplicates
+    // included; validateCompanies() keeps the first copy) and records with no
+    // LinkedIn URL (validation's missing_linkedin issue) cannot be enriched.
+    // The rest go to enrichment "valid" first, then "flagged", each group in
+    // search order, so the enrichment cap is spent on the best candidates.
+    const { eligible, priority } = await recorder.time("validate", () =>
       tracer.span({ name: "deduplicate", kind: "GUARDRAIL", input: { companies: ids } }, async (span) => {
-        const kept = companies.map((_, i) => i).filter((i) => searchValidations[i].status !== "rejected");
+        const kept = companies
+          .map((_, i) => i)
+          .filter((i) => searchValidations[i].status !== "rejected" && hasLinkedIn(searchValidations[i]));
+        const ordered = [
+          ...kept.filter((i) => searchValidations[i].status === "valid"),
+          ...kept.filter((i) => searchValidations[i].status === "flagged"),
+        ];
         span.setAttributes({
           "dedupe.duplicate_ids": ids.filter((_, i) => isDuplicate(searchValidations[i])),
           "dedupe.rejected_ids": ids.filter(
             (_, i) => searchValidations[i].status === "rejected" && !isDuplicate(searchValidations[i]),
           ),
+          "dedupe.no_linkedin_ids": ids.filter(
+            (_, i) => searchValidations[i].status !== "rejected" && !hasLinkedIn(searchValidations[i]),
+          ),
           "dedupe.eligible_count": kept.length,
+          "enrichment.priority_ids": ordered.map((i) => ids[i]),
         });
-        return kept;
+        return { eligible: kept, priority: ordered };
       }),
     );
 
-    // 5. Enrich eligible, unique companies in search order, within the cap.
-    const enrich = await run.enrich(eligible.map((i) => companies[i]));
-    const enrichment: EnrichmentOutcome[] = companies.map(() => ({ status: "skipped_ineligible" }));
+    // 5. Enrich in priority order, within the cap. Outcomes and enriched
+    // records come back by position in `priority`, so they are mapped back
+    // through `priority` to the right companies; the result keeps search
+    // order.
+    const enrich = await run.enrich(priority.map((i) => companies[i]));
+    const enrichment: EnrichmentOutcome[] = companies.map((_, i) => ({
+      status:
+        searchValidations[i].status === "rejected" ? "skipped_ineligible" : "skipped_no_linkedin",
+    }));
     const enrichedRecords = new Map<number, RawCompany>();
-    eligible.forEach((companyIndex, k) => {
+    priority.forEach((companyIndex, k) => {
       enrichment[companyIndex] = enrich.outcomes[k];
       const record = enrich.enriched.get(k);
       if (record) enrichedRecords.set(companyIndex, record);
@@ -284,7 +307,7 @@ export async function runImprovedPipeline(
     const metrics = improvedMetrics(
       prospects,
       eligible.map((i) => ids[i]),
-      enrich.requested_indices.map((k) => ids[eligible[k]]),
+      enrich.requested_indices.map((k) => ids[priority[k]]),
     );
     root.setAttributes({
       "improved.rejected_count": metrics.rejected.count,

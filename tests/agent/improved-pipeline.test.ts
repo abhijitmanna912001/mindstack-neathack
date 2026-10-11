@@ -73,8 +73,8 @@ describe("runImprovedPipeline: evidence-run flow (10 searched, 5 enrichments)", 
       1003: "enriched",
       1004: "enriched",
       1005: "skipped_ineligible",
-      1006: "enriched",
-      1007: "skipped_budget",
+      1006: "skipped_budget",
+      1007: "enriched",
       1008: "skipped_budget",
       1009: "skipped_budget",
       1010: "skipped_ineligible",
@@ -86,8 +86,8 @@ describe("runImprovedPipeline: evidence-run flow (10 searched, 5 enrichments)", 
       1003: "assessed",
       1004: "assessed",
       1005: "not_assessed:duplicate",
-      1006: "assessed",
-      1007: "not_assessed:not_enriched",
+      1006: "not_assessed:not_enriched",
+      1007: "assessed",
       1008: "not_assessed:not_enriched",
       1009: "not_assessed:not_enriched",
       1010: "not_assessed:rejected",
@@ -100,7 +100,7 @@ describe("runImprovedPipeline: evidence-run flow (10 searched, 5 enrichments)", 
     expect(p[1010].validation?.status).toBe("rejected");
 
     // Every assessed company kept outreach that passed checkClaims.
-    for (const id of [1001, 1002, 1003, 1004, 1006]) {
+    for (const id of [1001, 1002, 1003, 1004, 1007]) {
       expect(p[id].checks).toMatchObject({ assessment: { ok: true }, claims: { ok: true }, outreach: "kept" });
     }
 
@@ -164,8 +164,8 @@ describe("runImprovedPipeline: fact provenance", () => {
 
     const name1001 = p[1001].facts?.find((f) => f.id === "1001:name");
     expect(name1001?.source).toMatchObject({ provider: "fixture", operation: "company_enrich", record_id: "1001" });
-    // 1007 was not enriched, so its facts rest on the search record.
-    expect(p[1007].facts?.find((f) => f.id === "1007:name")?.source.operation).toBe("company_search");
+    // 1006 was not enriched, so its facts rest on the search record.
+    expect(p[1006].facts?.find((f) => f.id === "1006:name")?.source.operation).toBe("company_search");
     // Cross-checks are derived, never provider data.
     expect(p[1001].facts?.find((f) => f.id === "1001:xcheck:website_domain")?.source.provider).toBe("derived");
     expect(result.prospects.flatMap((x) => x.facts ?? []).some((f) => f.source.provider === "model")).toBe(false);
@@ -184,7 +184,8 @@ describe("runImprovedPipeline: enrichment caps and failures", () => {
     const result = await runImprovedPipeline(OPEN_ICP, h.deps, { config: config({ max_enrichments: 2 }) });
     expect(h.provider.enrichCalls[0]).toHaveLength(2);
     expect(result.run.counts.enriched).toBe(2);
-    expect(h.llm.requests.map(companyOf)).toEqual([1001, 1002]);
+    // "valid" companies take the two slots.
+    expect(h.llm.requests.map(companyOf)).toEqual([1001, 1004]);
   });
 
   it("assesses no one when enrichment fails, and says why", async () => {

@@ -139,8 +139,9 @@ describe("improved run metrics", () => {
       duplicates_removed: { count: 1, company_ids: [1005] },
       enrichment: {
         eligible: { count: 8, company_ids: [1001, 1002, 1003, 1004, 1006, 1007, 1008, 1009] },
-        requested: { count: 5, company_ids: [1001, 1002, 1003, 1004, 1006] },
-        enriched: { count: 5, company_ids: [1001, 1002, 1003, 1004, 1006] },
+        // Requested in priority order ("valid" first); enriched in search order.
+        requested: { count: 5, company_ids: [1001, 1004, 1007, 1002, 1003] },
+        enriched: { count: 5, company_ids: [1001, 1002, 1003, 1004, 1007] },
       },
       assessments_failed: { count: 0, company_ids: [], by_reason: {} },
       outreach_suppressed: { count: 0, company_ids: [] },

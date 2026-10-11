@@ -1,5 +1,6 @@
-// Enriches searched companies in search order, within the enrichment cap.
-// Naive on purpose: no ranking, no duplicate checks, one batch call.
+// Enriches companies in the order given, within the enrichment cap. The
+// baseline passes search order; the improved pipeline passes its priority
+// order. No ranking or duplicate checks of its own; one batch call.
 
 import { normalizeLinkedInUrl } from "../data/normalize";
 import type { CompanyProvider } from "../data/provider";
