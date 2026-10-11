@@ -12,6 +12,7 @@ import {
   recordSystemHashes,
   sha256Hex,
   shortHash,
+  summarizeFinalValidation,
   summarizeGuardFindings,
   summarizeOutreachKept,
   summarizeValidation,
@@ -71,6 +72,48 @@ describe("summarizeValidation", () => {
   it("handles an empty run and rejects mismatched lengths", () => {
     expect(summarizeValidation([], []).searched).toEqual({ valid: 0, flagged: 0, rejected: 0 });
     expect(() => summarizeValidation([v("valid")], [])).toThrow();
+  });
+});
+
+describe("summarizeFinalValidation", () => {
+  const withIssues = (status: Validation["status"], ...pairs: [string, string][]): Validation => ({
+    status,
+    issues: pairs.map(([code, field]) => ({ code, field, reason: "secret reason" }) as Validation["issues"][number]),
+  });
+
+  it("counts statuses, issue pairs and enrichment-driven changes, ids only", () => {
+    const search = [v("valid"), v("valid"), v("flagged"), v("rejected")];
+    const final = [
+      withIssues("flagged", ["size_headcount_mismatch", "revenue_range"]),
+      v("valid"),
+      withIssues("flagged", ["missing_linkedin", "professional_network_url"], ["size_headcount_mismatch", "revenue_range"]),
+      withIssues("rejected", ["missing_name", "name"]),
+    ];
+    const prospects = [
+      { company_id: 10, assessed: true },
+      { company_id: 11, assessed: true },
+      { company_id: 12, assessed: false },
+      { company_id: 13, assessed: false },
+    ];
+    const out = summarizeFinalValidation(search, final, prospects);
+    expect(out.all).toEqual({ valid: 1, flagged: 2, rejected: 1 });
+    expect(out.assessed).toEqual({ valid: 1, flagged: 1, rejected: 0 });
+    expect(out.issues_by_code_field).toEqual({
+      "size_headcount_mismatch:revenue_range": 2,
+      "missing_linkedin:professional_network_url": 1,
+      "missing_name:name": 1,
+    });
+    expect(out.changed_by_enrichment).toEqual({
+      count: 1,
+      transitions: { "valid->flagged": 1 },
+      company_ids: [10],
+    });
+    expect(JSON.stringify(out)).not.toContain("secret reason");
+  });
+
+  it("handles an empty run and rejects mismatched lengths", () => {
+    expect(summarizeFinalValidation([], [], []).changed_by_enrichment.count).toBe(0);
+    expect(() => summarizeFinalValidation([v("valid")], [], [])).toThrow();
   });
 });
 

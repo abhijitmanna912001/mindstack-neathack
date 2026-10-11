@@ -43,6 +43,7 @@ import {
   type RunConfig,
 } from "../src/core/types";
 import {
+  type FinalValidation,
   type PostHocValidation,
   type ResolvedRun,
   buildRunIcp,
@@ -52,6 +53,7 @@ import {
   parseRunArgs,
   recordSystemHashes,
   sha256Hex,
+  summarizeFinalValidation,
   summarizeGuardFindings,
   summarizeOutreachKept,
   summarizeValidation,
@@ -124,6 +126,19 @@ function postHocValidation(searched: readonly RawCompany[], result: PipelineResu
   );
 }
 
+// Validates the records as the pipeline delivered them (enriched where
+// enriched), in result order, and compares with the search-stage verdicts.
+function finalValidation(searched: readonly RawCompany[], result: PipelineResult): FinalValidation {
+  return summarizeFinalValidation(
+    validateCompanies(searched),
+    validateCompanies(result.prospects.map((p) => p.raw)),
+    result.prospects.map((p) => ({
+      company_id: p.raw.crustdata_company_id,
+      assessed: p.assessment.status === "assessed",
+    })),
+  );
+}
+
 interface ProviderSpend {
   search: number;
   enrich: number;
@@ -137,6 +152,7 @@ function buildReport(
   started_at: string,
   prompt: { readonly system_prompt_hashes: readonly string[] },
   validation: PostHocValidation,
+  final_validation: FinalValidation,
   spend: ProviderSpend,
 ) {
   const { run, usage } = result;
@@ -185,6 +201,9 @@ function buildReport(
       system_prompt_hashes: prompt.system_prompt_hashes,
     },
     post_hoc_validation: validation,
+    // Both pipelines: the delivered (post-enrichment) records, validated in
+    // memory. Codes, field names, counts and company ids only.
+    final_record_validation: final_validation,
     // Both pipelines: the final outreach drafts, measured after the fact with
     // the same function (for improved, the drafts that survived the guards).
     outreach_kept: summarizeOutreachKept(result.prospects),
@@ -272,7 +291,8 @@ async function main(): Promise<void> {
 
   const system_prompt_hashes = [...llm.system_hashes].sort();
   const validation = postHocValidation(searched, result);
-  const report = buildReport(args, config, icp_description, result, started_at, { system_prompt_hashes }, validation, spend);
+  const finalVal = finalValidation(searched, result);
+  const report = buildReport(args, config, icp_description, result, started_at, { system_prompt_hashes }, validation, finalVal, spend);
   await mkdir("runs", { recursive: true });
   const path = `runs/${started_at.replace(/[:.]/g, "-")}-${fileSafe(args.label)}.json`;
   await writeFile(path, `${JSON.stringify(report, null, 2)}\n`);
@@ -306,6 +326,18 @@ async function main(): Promise<void> {
   console.log(`  searched  ${fmt(validation.searched)}`);
   console.log(`  enriched  ${fmt(validation.enriched)}  wasted_enrichments=${validation.wasted_enrichments}`);
   console.log(`  delivered ${fmt(validation.delivered)}  duplicate_groups=${validation.delivered_duplicate_groups}`);
+  const tally = (r: Readonly<Record<string, number>>) =>
+    Object.entries(r)
+      .map(([key, n]) => `${key}=${n}`)
+      .join(",") || "none";
+  console.log("final-record validation (counts)");
+  console.log(`  all       ${fmt(finalVal.all)}`);
+  console.log(`  assessed  ${fmt(finalVal.assessed)}`);
+  console.log(`  issues    ${tally(finalVal.issues_by_code_field)}`);
+  console.log(
+    `  changed_by_enrichment=${finalVal.changed_by_enrichment.count} (${tally(finalVal.changed_by_enrichment.transitions)})` +
+      ` ids=${finalVal.changed_by_enrichment.company_ids.join(",") || "none"}`,
+  );
   const m = computeBaselineCitationMetrics(result, args.provider);
   if (args.pipeline === "baseline") {
     console.log(

@@ -95,6 +95,56 @@ export function summarizeValidation(
   };
 }
 
+// --- Final-record validation -------------------------------------------------
+
+export interface FinalValidation {
+  readonly all: StatusCounts;
+  readonly assessed: StatusCounts;
+  // "code:field" -> number of records carrying that issue, over all prospects.
+  readonly issues_by_code_field: Readonly<Record<string, number>>;
+  readonly changed_by_enrichment: {
+    readonly count: number;
+    // "from->to" -> number of records.
+    readonly transitions: Readonly<Record<string, number>>;
+    readonly company_ids: readonly number[];
+  };
+}
+
+// `searchValidations[i]`, `finalValidations[i]` and `prospects[i]` describe the
+// same company, in result order. Codes, fields, counts and ids only: issue
+// reasons are never read.
+export function summarizeFinalValidation(
+  searchValidations: readonly Validation[],
+  finalValidations: readonly Validation[],
+  prospects: readonly { readonly company_id: number; readonly assessed: boolean }[],
+): FinalValidation {
+  if (searchValidations.length !== prospects.length || finalValidations.length !== prospects.length) {
+    throw new Error("validations and prospects must have the same length.");
+  }
+  const issues: Record<string, number> = {};
+  const transitions: Record<string, number> = {};
+  const changed: number[] = [];
+  prospects.forEach((p, i) => {
+    const final = finalValidations[i];
+    // Counted once per record, even if a code:field pair repeats.
+    for (const key of new Set(final.issues.map((issue) => `${issue.code}:${issue.field}`))) {
+      issues[key] = (issues[key] ?? 0) + 1;
+    }
+    const before = searchValidations[i].status;
+    if (before !== final.status) {
+      const key = `${before}->${final.status}`;
+      transitions[key] = (transitions[key] ?? 0) + 1;
+      changed.push(p.company_id);
+    }
+  });
+  return {
+    all: countStatuses(finalValidations.map((v) => v.status)),
+    assessed: countStatuses(finalValidations.filter((_, i) => prospects[i].assessed).map((v) => v.status)),
+    issues_by_code_field: issues,
+    changed_by_enrichment: { count: changed.length, transitions, company_ids: changed },
+  };
+}
+
 // --- Outreach and guard summaries --------------------------------------------
 
 export interface OutreachKept {
