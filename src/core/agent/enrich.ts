@@ -13,6 +13,8 @@ export interface EnrichStepResult {
   readonly enriched: ReadonlyMap<number, RawCompany>;
   readonly issues: readonly PipelineIssue[];
   readonly requested: number;
+  // Indices (into `companies`) of the companies sent to the enrich call.
+  readonly requested_indices: readonly number[];
   readonly cost_usd: number;
   readonly calls: number;
 }
@@ -44,7 +46,7 @@ export async function enrichInSearchOrder(
         message: "No enrichments left in this run's budget.",
       });
     }
-    return { outcomes, enriched, issues, requested: 0, cost_usd: 0, calls: 0 };
+    return { outcomes, enriched, issues, requested: 0, requested_indices: [], cost_usd: 0, calls: 0 };
   }
 
   const result = await provider.enrichCompanies(
@@ -71,7 +73,7 @@ export async function enrichInSearchOrder(
       message: `Enrichment of ${selected.length} companies returned ${category}: ${result.error.message}`,
       error_category: category,
     });
-    return { outcomes, enriched, issues, requested: selected.length, cost_usd: 0, calls: 0 };
+    return { outcomes, enriched, issues, requested: selected.length, requested_indices: selected, cost_usd: 0, calls: 0 };
   }
 
   // Match each request to a returned record by id, then by LinkedIn URL.
@@ -108,6 +110,7 @@ export async function enrichInSearchOrder(
     enriched,
     issues,
     requested: selected.length,
+    requested_indices: selected,
     cost_usd: result.cost_usd,
     calls: result.calls,
   };

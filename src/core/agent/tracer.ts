@@ -3,7 +3,7 @@
 // in-memory recorder. Plain TypeScript only.
 
 // Span kinds the pipeline uses. Each is a valid neatlogs trace() kind.
-export type PipelineSpanKind = "WORKFLOW" | "CHAIN" | "TOOL" | "AGENT" | "LLM";
+export type PipelineSpanKind = "WORKFLOW" | "CHAIN" | "TOOL" | "AGENT" | "LLM" | "GUARDRAIL";
 
 export type TraceAttributeValue =
   | string
