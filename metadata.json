@@ -3,9 +3,10 @@
   "checkpoint_id": "01M4MNY2PRETG3Q602KEFTWYBE",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 3,
   "files_touched": [
     ".gitignore",
+    "scripts/run-pipeline.ts",
     "src/core/data/fixture-provider.ts",
     "src/core/observability/tracing.ts",
     "tests/fixture-provider.test.ts"
@@ -17,13 +18,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 14,
-    "cache_creation_tokens": 26130,
-    "cache_read_tokens": 313523,
-    "output_tokens": 2116,
-    "api_call_count": 7
+    "input_tokens": 42,
+    "cache_creation_tokens": 87880,
+    "cache_read_tokens": 1206616,
+    "output_tokens": 13025,
+    "api_call_count": 21
   }
 }

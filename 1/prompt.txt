@@ -1,0 +1,15 @@
+<pasted_content id="f79f">
+Task: three changes. Touch ONLY src/core/observability/tracing.ts, src/core/data/fixture-provider.ts, tests/fixture-provider.test.ts, scripts/run-pipeline.ts and .gitignore. Never read .env or print environment variables, headers or keys. No new dependencies.
+
+1. tracing.ts: initTracing(options?: { run_label?: string }). The label is options.run_label, or the env var SIGNALSCOUT_RUN_LABEL if the option is absent. When a label is set, pass tags: [label] to init(). Keep the one-time guard and closeTracing as they are.
+
+2. fixture-provider.ts: add an optional cost_per_record: { search?: number; enrich?: number }. When it is given and the existing cost_usd option is not, a successful call costs per-record price times the number of records returned (search) or matched (enrich). Default behaviour (cost 0) must not change. Add tests.
+
+3. scripts/run-pipeline.ts: the official entry point for evidence runs. First read src/core/agent/index.ts, pipeline.ts, gateway-client.ts, neatlogs-tracer.ts and src/core/types.ts, and use ONLY the public exports from the agent index. Arguments (parse by hand): --pipeline baseline (error with a clear message for any other value, the improved pipeline does not exist yet), --llm fake|real (default fake), --confirm-spend (required with --llm real, otherwise exit with an error before any network call), --label <string> (default: the pipeline name), --config dev|eval (default eval; eval = DEFAULT_RUN_CONFIG with max_search_results 10 and max_enrichments 5; dev = DEV_RUN_CONFIG). Behaviour: build a FixtureProvider with the synthetic fixtures and cost_per_record { search: 0.069, enrich: 0.60 } (label these costs simulated at measured Crustdata prices); build the LLM client (FakeLlmClient, or the real gateway client with the key from process.env.LITELLM_API_KEY, passed in explicitly, abort if it is missing); call initTracing({ run_label }); wrap the run in span({ kind: 'WORKFLOW', name: 'signalscout_run' }) and pass the neatlogs tracer adapter to the pipeline; call closeTracing() in a finally block. Print a short summary with the cost basis labels (measured, simulated, estimated, gateway_reported) and write a JSON report to runs/<timestamp>-<label>.json containing only counts, ids, costs, issue codes, tokens and timings, never raw company records, keys or headers. Add runs/ to .gitignore. Exit non-zero on error.
+
+Do not run the script yourself. Run npx vitest run, npx tsc --noEmit and npm run lint and fix failures. Then tell me the exact commands to run it myself (fake first), and summarise in 8 bullets, including anything you were unsure about.
+</pasted_content id="f79f">
+
+---
+
+PR #2 is now merged, and main contains the agent code. Please re-read src/core/agent/index.ts and continue with the three changes from my task.
