@@ -1,0 +1,66 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4P03M06EB73B1X736WDZPQY",
+  "session_id": "73ff50af-fca2-4cce-96ca-c9a477e87854",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-11T17:28:01.426768Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "save_step_count": 2,
+  "files_touched": [
+    "tests/live/pg-store.integration.test.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-5-5",
+  "turn_id": "566e0ec34cde",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 36,
+    "cache_creation_tokens": 84822,
+    "cache_read_tokens": 1483009,
+    "output_tokens": 24322,
+    "api_call_count": 18
+  },
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-11T17:28:01.395348Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 306,
+    "human_modified": 2,
+    "human_removed": 0,
+    "total_committed": 306,
+    "total_lines_changed": 308,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 1123,
+      "user_lines_removed": 2,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "src/server/live/config.ts": 87,
+        "src/server/live/run-live.ts": 442,
+        "src/server/live/validate.ts": 57,
+        "tests/live/pg-store.integration.test.ts": 5,
+        "tests/live/run-live.test.ts": 460,
+        "tests/live/validate.test.ts": 72
+      },
+      "user_removed_per_file": {
+        "tests/live/pg-store.integration.test.ts": 2
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1150,
+      "agent_lines_removed": 2
+    }
+  ]
+}
