@@ -15,14 +15,31 @@ import { span } from "neatlogs";
 import {
   FakeLlmClient,
   type LlmClient,
+  type LlmRequest,
+  type LlmResponse,
   type PipelineResult,
+  PROMPT_SAFETY_RULES,
+  PROMPT_VERSION,
   runBaselinePipeline,
 } from "../src/core/agent";
 import { createGatewayLlmClient } from "../src/core/agent/gateway-client";
 import { neatlogsTracer } from "../src/core/agent/neatlogs-tracer";
+import type { CompanyProvider } from "../src/core/data/provider";
 import { FixtureProvider } from "../src/core/data/fixture-provider";
+import { validateCompanies } from "../src/core/data/validation";
 import { closeTracing, initTracing } from "../src/core/observability/tracing";
-import { DEFAULT_RUN_CONFIG, DEV_RUN_CONFIG, type RunConfig } from "../src/core/types";
+import {
+  DEFAULT_RUN_CONFIG,
+  DEV_RUN_CONFIG,
+  type RawCompany,
+  type RunConfig,
+} from "../src/core/types";
+import {
+  type PostHocValidation,
+  recordSystemHashes,
+  sha256Hex,
+  summarizeValidation,
+} from "./run-metrics";
 
 // What the evidence ICP means in words; matches describeIcp for the open ICP.
 const EVIDENCE_ICP_DESCRIPTION = "Companies in any industry of any size in any location.";
@@ -125,7 +142,43 @@ function fileSafe(label: string): string {
   return label.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "run";
 }
 
-function buildReport(args: Args, config: RunConfig, result: PipelineResult, started_at: string) {
+// Delegates to the real or fake client and records only the hashes of the
+// system messages it is asked to send, never their text.
+class HashingLlmClient implements LlmClient {
+  readonly system_hashes = new Set<string>();
+
+  constructor(private readonly inner: LlmClient) {}
+
+  get records_llm_spans(): boolean {
+    return this.inner.records_llm_spans;
+  }
+
+  complete(request: LlmRequest): Promise<LlmResponse> {
+    recordSystemHashes(request.messages, this.system_hashes);
+    return this.inner.complete(request);
+  }
+}
+
+function postHocValidation(searched: readonly RawCompany[], result: PipelineResult): PostHocValidation {
+  // The pipeline returns one prospect per searched company, in search order.
+  return summarizeValidation(
+    validateCompanies(searched),
+    result.prospects.map((p) => ({
+      company_id: p.raw.crustdata_company_id,
+      enriched: p.enrichment.status === "enriched",
+      delivered: p.assessment.status === "assessed",
+    })),
+  );
+}
+
+function buildReport(
+  args: Args,
+  config: RunConfig,
+  result: PipelineResult,
+  started_at: string,
+  prompt: { readonly system_prompt_hashes: readonly string[] },
+  validation: PostHocValidation,
+) {
   const { run, usage } = result;
   return {
     started_at,
@@ -157,6 +210,12 @@ function buildReport(args: Args, config: RunConfig, result: PipelineResult, star
       known_usd: usage.llm_cost.known_usd,
       cost_complete: usage.llm_cost.complete,
     },
+    prompt_provenance: {
+      prompt_version: PROMPT_VERSION,
+      prompt_safety_rules_sha256: sha256Hex(PROMPT_SAFETY_RULES),
+      system_prompt_hashes: prompt.system_prompt_hashes,
+    },
+    post_hoc_validation: validation,
     issue_codes: result.issues.map((i) => i.code),
     company_ids: result.prospects.map((p) => p.raw.crustdata_company_id),
     prospects: result.prospects.map((p) => ({
@@ -173,7 +232,17 @@ async function main(): Promise<void> {
   const config = args.config === "dev" ? DEV_RUN_CONFIG : EVAL_RUN_CONFIG;
 
   const provider = new FixtureProvider({ config, cost_per_record: SIMULATED_COST_PER_RECORD });
-  const llm = buildLlm(args.llm);
+  const llm = new HashingLlmClient(buildLlm(args.llm));
+  const searched: RawCompany[] = [];
+  const recordingProvider: CompanyProvider = {
+    autocompleteIndustry: (query) => provider.autocompleteIndustry(query),
+    enrichCompanies: (urls) => provider.enrichCompanies(urls),
+    async searchCompanies(filters, limit) {
+      const res = await provider.searchCompanies(filters, limit);
+      if (res.ok) searched.push(...res.data);
+      return res;
+    },
+  };
   const started_at = new Date().toISOString();
 
   await initTracing({ run_label: args.label });
@@ -182,7 +251,7 @@ async function main(): Promise<void> {
     const run = span({ kind: "WORKFLOW", name: "signalscout_run" }, () =>
       runBaselinePipeline(
         EVIDENCE_ICP,
-        { provider, budget: provider.budget, llm, tracer: neatlogsTracer },
+        { provider: recordingProvider, budget: provider.budget, llm, tracer: neatlogsTracer },
         { config },
       ),
     );
@@ -191,7 +260,9 @@ async function main(): Promise<void> {
     await closeTracing();
   }
 
-  const report = buildReport(args, config, result, started_at);
+  const system_prompt_hashes = [...llm.system_hashes].sort();
+  const validation = postHocValidation(searched, result);
+  const report = buildReport(args, config, result, started_at, { system_prompt_hashes }, validation);
   await mkdir("runs", { recursive: true });
   const path = `runs/${started_at.replace(/[:.]/g, "-")}-${fileSafe(args.label)}.json`;
   await writeFile(path, `${JSON.stringify(report, null, 2)}\n`);
@@ -211,6 +282,15 @@ async function main(): Promise<void> {
       `  estimated=$${llmCost.estimated_usd.toFixed(4)} (${llmCost.calls_by_basis.estimated} calls)` +
       `  unavailable=${llmCost.calls_by_basis.unavailable} calls`,
   );
+  console.log(
+    `prompt   version=${PROMPT_VERSION} safety_rules_sha256=${sha256Hex(PROMPT_SAFETY_RULES).slice(0, 12)} system_hashes=${system_prompt_hashes.join(",") || "none"}`,
+  );
+  const fmt = (c: { valid: number; flagged: number; rejected: number }) =>
+    `valid=${c.valid} flagged=${c.flagged} rejected=${c.rejected}`;
+  console.log("post-hoc validation (counts)");
+  console.log(`  searched  ${fmt(validation.searched)}`);
+  console.log(`  enriched  ${fmt(validation.enriched)}  wasted_enrichments=${validation.wasted_enrichments}`);
+  console.log(`  delivered ${fmt(validation.delivered)}  duplicate_groups=${validation.delivered_duplicate_groups}`);
   console.log(`issues   ${result.issues.map((i) => i.code).join(", ") || "none"}`);
   console.log(`report   ${path}`);
   if (result.status === "stopped") {
