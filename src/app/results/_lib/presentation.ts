@@ -222,7 +222,7 @@ export function toProspectDto(p: BaselineProspect): ProspectDto {
   };
 }
 
-function metricsDto(m: ImprovedRunMetrics): MetricsDto {
+export function metricsDto(m: ImprovedRunMetrics): MetricsDto {
   return {
     rejected: idCount(m.rejected),
     flagged: idCount(m.flagged),

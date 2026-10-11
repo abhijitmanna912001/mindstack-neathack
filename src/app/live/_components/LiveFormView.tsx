@@ -16,9 +16,14 @@ export interface LiveFormViewProps {
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
-const CODE_HINT = "As shown in your invitation, for example XXXXX-XXXXX-XXXXX-XXXXX.";
+// The invitation code format, as an example only: eight groups of four.
+export const CODE_PLACEHOLDER = "XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX";
+const CODE_HINT = `As shown in your invitation, for example ${CODE_PLACEHOLDER}.`;
 const INDUSTRY_HINT = "In your own words. The live service will match it to the closest provider industry.";
 const COUNTRY_HINT = "The beta covers companies in India only.";
+
+export const SYNTHETIC_CODE_NOTE =
+  "Some invitation codes are synthetic demo codes. A synthetic-mode code runs a demo on fixture companies with a fake model and ignores the industry, country and company size you submit. Live codes search Crustdata with them.";
 
 // The live-run form. Inputs deliberately have no name attribute: even a
 // native submission before the page's script loads can never put the
@@ -42,6 +47,10 @@ export function LiveFormView(props: LiveFormViewProps) {
         <p className="text-sm text-slate-600 dark:text-slate-300">All fields are required.</p>
       </div>
 
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-slate-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-slate-100">
+        {SYNTHETIC_CODE_NOTE}
+      </p>
+
       <FormField id="live-code" label="Invitation code" hint={CODE_HINT} error={errors.code}>
         <input
           id="live-code"
@@ -51,7 +60,7 @@ export function LiveFormView(props: LiveFormViewProps) {
           maxLength={CODE_MAX_LENGTH}
           required
           autoComplete="off"
-          placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
+          placeholder={CODE_PLACEHOLDER}
           autoCapitalize="characters"
           spellCheck={false}
           disabled={submitting}

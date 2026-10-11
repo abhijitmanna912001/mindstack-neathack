@@ -25,7 +25,7 @@ export type LiveFormErrors = Partial<Record<LiveFormField, string>>;
 export const EMPTY_LIVE_FORM: LiveFormValues = { code: "", industry: "", sizes: [] };
 
 // The agreed contract only requires non-empty text of at most 64 characters.
-// The grouped form "XXXXX-XXXXX-XXXXX-XXXXX" is an example, not a rule, so no
+// The grouped form "XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" is an example, not a rule, so no
 // character set or grouping is enforced here.
 
 function isCompanySize(value: string): value is LiveCompanySize {

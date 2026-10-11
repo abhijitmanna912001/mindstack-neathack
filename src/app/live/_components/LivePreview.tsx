@@ -10,6 +10,7 @@ import { createPreviewAdapter, type PreviewFixtures, type PreviewScenario } from
 import {
   createSubmissionController,
   type LiveViewState,
+  serverFieldErrors,
   type SubmissionController,
   viewStateFor,
 } from "../_lib/submission";
@@ -50,7 +51,10 @@ export function LivePreview({ fixtures }: { fixtures: PreviewFixtures }) {
     if (submissions.inFlight) return;
     setView({ kind: "loading" });
     const outcome = await submissions.submit(checked.request);
-    if (outcome.kind === "done") setView(viewStateFor(outcome.response));
+    if (outcome.kind !== "done") return;
+    const next = viewStateFor(outcome.response);
+    setView(next);
+    setErrors(serverFieldErrors(next));
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {

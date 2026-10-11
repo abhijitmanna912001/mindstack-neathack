@@ -98,8 +98,22 @@ describe("live page network and secrets guard", () => {
     const client = liveSources.filter((f) => readFileSync(f, "utf8").startsWith('"use client"'));
     expect(client.map(rel)).toEqual(["app/live/_components/LivePreview.tsx"]);
     const { files } = walk(client, false);
-    const runtimeCore = files.map(rel).filter((f) => f.startsWith("core/") || f.endsWith("_lib/fixtures.ts"));
+    const runtimeCore = files
+      .map(rel)
+      .filter(
+        (f) =>
+          f.startsWith("core/") ||
+          f.startsWith("server/") ||
+          f.endsWith("_lib/fixtures.ts") ||
+          f.endsWith("_lib/live-results.ts") ||
+          f.endsWith("_lib/presentation.ts"),
+      );
     expect(runtimeCore).toEqual([]);
+  });
+
+  it("does not import server code from the page", () => {
+    const { files } = walk(liveSources, true);
+    expect(files.map(rel).filter((f) => f.startsWith("server/"))).toEqual([]);
   });
 
   it("does not create backend routes", () => {
