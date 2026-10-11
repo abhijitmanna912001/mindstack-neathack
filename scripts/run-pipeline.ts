@@ -48,9 +48,12 @@ import {
   buildRunIcp,
   exitCodeForError,
   exitCodeForStatus,
+  formatOutreachLine,
   parseRunArgs,
   recordSystemHashes,
   sha256Hex,
+  summarizeGuardFindings,
+  summarizeOutreachKept,
   summarizeValidation,
   UsageError,
   validateRunArgs,
@@ -182,10 +185,14 @@ function buildReport(
       system_prompt_hashes: prompt.system_prompt_hashes,
     },
     post_hoc_validation: validation,
-    // Baseline: citations measured after the fact. Improved: its own guardrail
-    // counts (null when it stopped before validation). Counts and ids only.
-    citation_metrics: args.pipeline === "baseline" ? computeBaselineCitationMetrics(result, fact_provider) : null,
+    // Both pipelines: the final outreach drafts, measured after the fact with
+    // the same function (for improved, the drafts that survived the guards).
+    outreach_kept: summarizeOutreachKept(result.prospects),
+    citation_metrics: computeBaselineCitationMetrics(result, fact_provider),
+    // Improved only: its own guardrail counts (null when it stopped before
+    // validation) and findings by code. Counts and ids only.
     improved_metrics: args.pipeline === "improved" ? (result.metrics ?? null) : null,
+    guard_findings: args.pipeline === "improved" ? summarizeGuardFindings(result.prospects, result.metrics) : null,
     issue_codes: result.issues.map((i) => i.code),
     company_ids: result.prospects.map((p) => p.raw.crustdata_company_id),
     prospects: result.prospects.map((p) => ({
@@ -299,24 +306,31 @@ async function main(): Promise<void> {
   console.log(`  searched  ${fmt(validation.searched)}`);
   console.log(`  enriched  ${fmt(validation.enriched)}  wasted_enrichments=${validation.wasted_enrichments}`);
   console.log(`  delivered ${fmt(validation.delivered)}  duplicate_groups=${validation.delivered_duplicate_groups}`);
+  const m = computeBaselineCitationMetrics(result, args.provider);
   if (args.pipeline === "baseline") {
-    const m = computeBaselineCitationMetrics(result, args.provider);
     console.log(
       `citations assessed=${m.assessed} drafts=${m.outreach_drafts} cited=${m.cited_fact_ids} citeable=${m.citeable} missing=${m.missing}` +
         ` cross_company=${m.cross_company} model_provider=${m.model_provider} uncertain=${m.uncertain}` +
         ` other_non_citeable=${m.other_non_citeable} drafts_with_violations=${m.drafts_with_violations.count}`,
     );
   } else if (result.metrics) {
-    const m = result.metrics;
+    const im = result.metrics;
     console.log(
-      `improved rejected=${m.rejected.count} flagged=${m.flagged.count} duplicates_removed=${m.duplicates_removed.count}` +
-        ` eligible=${m.enrichment.eligible.count} requested=${m.enrichment.requested.count} enriched=${m.enrichment.enriched.count}` +
-        ` assessments_failed=${m.assessments_failed.count} outreach_suppressed=${m.outreach_suppressed.count}` +
-        ` claim_violations=${m.claim_violations.count} (drafts=${m.claim_violations.drafts})`,
+      `improved rejected=${im.rejected.count} flagged=${im.flagged.count} duplicates_removed=${im.duplicates_removed.count}` +
+        ` eligible=${im.enrichment.eligible.count} requested=${im.enrichment.requested.count} enriched=${im.enrichment.enriched.count}` +
+        ` assessments_failed=${im.assessments_failed.count} outreach_suppressed=${im.outreach_suppressed.count}` +
+        ` claim_violations=${im.claim_violations.count} (drafts=${im.claim_violations.drafts})`,
     );
+    const g = summarizeGuardFindings(result.prospects, im);
+    const byCode = (r: Readonly<Record<string, number>>) =>
+      Object.entries(r)
+        .map(([code, n]) => `${code}=${n}`)
+        .join(",") || "none";
+    console.log(`guards   findings: ${byCode(g.findings_by_code)}  claim_violations: ${byCode(g.claim_violations_by_code)}`);
   } else {
     console.log("improved metrics unavailable (the run stopped before validation)");
   }
+  console.log(formatOutreachLine(summarizeOutreachKept(result.prospects), m));
   console.log(`issues   ${result.issues.map((i) => i.code).join(", ") || "none"}`);
   console.log(`report   ${path}`);
   if (result.status === "stopped") {

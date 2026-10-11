@@ -4,6 +4,11 @@
 // and hashes. Environment values are only tested for presence, never returned.
 
 import { createHash } from "node:crypto";
+import type {
+  BaselineCitationMetrics,
+  BaselineProspect,
+  ImprovedRunMetrics,
+} from "../src/core/agent/types";
 import type { Validation, ValidationStatus } from "../src/core/types";
 
 export function sha256Hex(text: string): string {
@@ -88,6 +93,77 @@ export function summarizeValidation(
     rejected_but_delivered_ids: delivered.filter(rejected).map((r) => r.company_id),
     delivered_duplicate_groups: groups.size,
   };
+}
+
+// --- Outreach and guard summaries --------------------------------------------
+
+export interface OutreachKept {
+  // Prospects whose final assessment still has an outreach draft.
+  readonly prospects: number;
+  // Fact ids those drafts cite, distinct within each draft (as the citation
+  // metrics count them).
+  readonly cited_fact_ids: number;
+  readonly company_ids: readonly number[];
+}
+
+export function summarizeOutreachKept(prospects: readonly BaselineProspect[]): OutreachKept {
+  const ids: number[] = [];
+  let cited = 0;
+  for (const p of prospects) {
+    if (p.assessment.status !== "assessed") continue;
+    const outreach = p.assessment.assessment.outreach;
+    if (!outreach) continue;
+    ids.push(p.raw.crustdata_company_id);
+    cited += new Set(outreach.cited_fact_ids).size;
+  }
+  return { prospects: ids.length, cited_fact_ids: cited, company_ids: ids };
+}
+
+export interface GuardFindingSummary {
+  // Prospects that carry per-prospect checks.
+  readonly prospects_checked: number;
+  // validateAssessment and checkClaims findings (errors and warnings) by code,
+  // from each prospect's checks.
+  readonly findings_by_code: Readonly<Record<string, number>>;
+  readonly outreach_by_decision: Readonly<Record<"kept" | "removed" | "none", number>>;
+  // From result.metrics: error findings from checkClaims, by code.
+  readonly claim_violations_by_code: Readonly<Record<string, number>>;
+  readonly outreach_suppressed: number;
+}
+
+// Counts only: codes and tallies, never messages or fact ids.
+export function summarizeGuardFindings(
+  prospects: readonly BaselineProspect[],
+  metrics: ImprovedRunMetrics | undefined,
+): GuardFindingSummary {
+  const findings: Record<string, number> = {};
+  const outreach = { kept: 0, removed: 0, none: 0 };
+  let checked = 0;
+  for (const p of prospects) {
+    const checks = p.checks;
+    if (!checks) continue;
+    checked += 1;
+    outreach[checks.outreach] += 1;
+    for (const f of [...checks.assessment.findings, ...(checks.claims?.findings ?? [])]) {
+      findings[f.code] = (findings[f.code] ?? 0) + 1;
+    }
+  }
+  return {
+    prospects_checked: checked,
+    findings_by_code: findings,
+    outreach_by_decision: outreach,
+    claim_violations_by_code: { ...(metrics?.claim_violations.by_code ?? {}) },
+    outreach_suppressed: metrics?.outreach_suppressed.count ?? 0,
+  };
+}
+
+// outreach kept=N cited=N citeable=N not_citeable=N
+export function formatOutreachLine(
+  kept: OutreachKept,
+  citations: Pick<BaselineCitationMetrics, "cited_fact_ids" | "citeable">,
+): string {
+  const notCiteable = citations.cited_fact_ids - citations.citeable;
+  return `outreach kept=${kept.prospects} cited=${citations.cited_fact_ids} citeable=${citations.citeable} not_citeable=${notCiteable}`;
 }
 
 // --- Flags -------------------------------------------------------------------

@@ -7,13 +7,17 @@ import {
   buildRunIcp,
   exitCodeForError,
   exitCodeForStatus,
+  formatOutreachLine,
   parseRunArgs,
   recordSystemHashes,
   sha256Hex,
   shortHash,
+  summarizeGuardFindings,
+  summarizeOutreachKept,
   summarizeValidation,
   validateRunArgs,
 } from "../scripts/run-metrics";
+import type { BaselineProspect } from "../src/core/agent/types";
 import type { Validation } from "../src/core/types";
 
 const v = (status: Validation["status"], related?: number): Validation => ({
@@ -146,5 +150,73 @@ describe("run flags", () => {
     expect(exitCodeForStatus("completed_empty")).toBe(EXIT_OK);
     expect(exitCodeForStatus("stopped")).toBe(EXIT_FAILED);
     expect(new Set([EXIT_OK, EXIT_FAILED, EXIT_USAGE]).size).toBe(3);
+  });
+});
+
+describe("outreach and guard summaries", () => {
+  const outreach = (ids: string[]) => ({ cited_fact_ids: ids });
+  const prospect = (
+    id: number,
+    cited: string[] | null,
+    extra: Partial<BaselineProspect> = {},
+  ): BaselineProspect =>
+    ({
+      raw: { crustdata_company_id: id },
+      enrichment: { status: "enriched" },
+      assessment: {
+        status: "assessed",
+        assessment: cited === null ? {} : { outreach: outreach(cited) },
+      },
+      ...extra,
+    }) as unknown as BaselineProspect;
+  const failed = {
+    raw: { crustdata_company_id: 9 },
+    enrichment: { status: "enriched" },
+    assessment: { status: "failed", reason: "llm_error", message: "x" },
+  } as unknown as BaselineProspect;
+
+  it("counts kept drafts and distinct cited ids, ids only", () => {
+    const out = summarizeOutreachKept([
+      prospect(1, ["1:a", "1:b", "1:a"]),
+      prospect(2, null),
+      failed,
+      prospect(3, ["3:a"]),
+    ]);
+    expect(out).toEqual({ prospects: 2, cited_fact_ids: 3, company_ids: [1, 3] });
+    expect(summarizeOutreachKept([])).toEqual({ prospects: 0, cited_fact_ids: 0, company_ids: [] });
+  });
+
+  it("tallies guard findings by code without messages", () => {
+    const f = (code: string) => ({ code, severity: "error", message: "secret text" });
+    const checks = (outreachDecision: string, a: string[], c?: string[]) => ({
+      assessment: { ok: true, findings: a.map(f) },
+      ...(c && { claims: { ok: false, findings: c.map(f) } }),
+      outreach: outreachDecision,
+    });
+    const out = summarizeGuardFindings(
+      [
+        prospect(1, null, { checks: checks("removed", ["missing_criterion"], ["unknown_citation", "unknown_citation"]) } as never),
+        prospect(2, null, { checks: checks("kept", []) } as never),
+        prospect(3, null),
+      ],
+      {
+        outreach_suppressed: { count: 1, company_ids: [1] },
+        claim_violations: { count: 2, drafts: 1, by_code: { unknown_citation: 2 }, company_ids: [1] },
+      } as never,
+    );
+    expect(out).toEqual({
+      prospects_checked: 2,
+      findings_by_code: { missing_criterion: 1, unknown_citation: 2 },
+      outreach_by_decision: { kept: 1, removed: 1, none: 0 },
+      claim_violations_by_code: { unknown_citation: 2 },
+      outreach_suppressed: 1,
+    });
+    expect(JSON.stringify(out)).not.toContain("secret text");
+  });
+
+  it("formats the compact outreach line", () => {
+    expect(
+      formatOutreachLine({ prospects: 4, cited_fact_ids: 9, company_ids: [] }, { cited_fact_ids: 9, citeable: 7 }),
+    ).toBe("outreach kept=4 cited=9 citeable=7 not_citeable=2");
   });
 });
