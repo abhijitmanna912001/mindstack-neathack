@@ -1,0 +1,886 @@
+<pasted_content id="bb62">
+We are building SignalScout AI for neatHack 2026.
+
+My branch is garvit/frontend-shell.
+The latest shared types, validation layer, FixtureProvider,
+BudgetGuard and buildFacts() are integrated.
+
+The existing 40 tests pass, and TypeScript checking passes.
+
+My assigned folders are:
+- src/core/agent/**
+- src/app/**
+
+My teammate owns:
+- src/core/types.ts
+- src/core/data/**
+- src/core/fixtures/**
+- src/core/observability/**
+- tests/**
+
+My teammate is currently implementing:
+src/core/observability/tracing.ts
+
+TASK: Inspect the code and prepare the implementation plan for
+the naive baseline agent pipeline.
+
+Read:
+- CLAUDE.md
+- AGENTS.md
+- src/core/types.ts
+- src/core/data/provider.ts
+- src/core/data/fixture-provider.ts
+- src/core/data/facts.ts
+- src/core/data/validation.ts
+
+Identify the actual interfaces and types. Do not assume their
+field names or behavior.
+
+Explain how the pipeline should:
+
+1. Accept the ICP input.
+2. Search through FixtureProvider.
+3. Enrich returned companies within the hard budget limits.
+4. Handle budget_cap_reached.
+5. Detect enrichment results that were not returned.
+6. Ask the LLM to assess companies and draft outreach.
+7. Return a structured result for the frontend.
+8. Integrate with the upcoming tracing module.
+
+For the naive baseline, do not add validation, deduplication,
+buildFacts(), validateAssessment() or checkClaims() yet.
+We will add those in a separate commit after capturing the
+baseline trace.
+
+IMPORTANT:
+- Do not modify any files.
+- Do not run Git commands.
+- Do not read, print or modify .env.
+- Do not make Crustdata or LLM API calls.
+- Do not add dependencies.
+- Do not commit or push.
+
+Return the proposed pipeline stages, exact existing interfaces
+to use, files I should create in src/core/agent/, and any
+questions that must be settled before implementation.
+</pasted_content id="bb62">
+
+---
+
+<pasted_content id="bb62">
+We are building SignalScout AI for neatHack 2026.
+
+My branch is garvit/frontend-shell. The latest main changes,
+including the shared types, provider, BudgetGuard, FixtureProvider,
+buildFacts, OpenAI SDK and neatlogs tracing module, are integrated.
+
+Before coding, inspect:
+- CLAUDE.md and AGENTS.md
+- src/core/types.ts
+- src/core/data/provider.ts
+- src/core/data/fixture-provider.ts
+- src/core/data/facts.ts
+- src/core/observability/tracing.ts
+- scripts/hello-trace.ts
+- the existing tests and package.json
+
+My assigned areas:
+- src/core/agent/**
+- src/app/**
+- tests/agent/**
+
+My teammate owns:
+- src/core/data/**
+- src/core/fixtures/**
+- src/core/observability/**
+- scripts/**
+- shared types and configuration
+- top-level tests/**
+
+Implement the naive baseline pipeline only.
+
+Requirements:
+1. Convert ICP input into SearchFilters, including free industry
+   autocomplete so free-text industry maps to provider-compatible
+   values. Verify company-size options against existing ranges.
+2. Search through CompanyProvider.
+3. Enrich companies in search order, within DEV_RUN_CONFIG limits.
+4. Handle budget_cap_reached and missing enrichment results
+   without crashing.
+5. Assess companies using the configured model and a real LLM
+   adapter interface. Use a fake LLM client for deterministic tests.
+6. Generate outreach drafts as part of the assessment.
+7. Emit pipeline events through an adapter compatible with the
+   existing tracing module. Do not modify tracing.ts.
+8. Return structured results that can later be displayed by the UI.
+9. Keep the naive baseline free of validation, deduplication,
+   buildFacts(), validateAssessment(), and checkClaims().
+10. Use synthetic fixtures only. Do not call Crustdata.
+11. Do not make real model calls during implementation or tests.
+12. Respect the configured model-call, output-token, enrichment,
+    and spending limits. No parallel model calls.
+13. Read the model name from RunConfig. Do not hardcode it.
+14. Do not modify package.json, the lockfile, shared types,
+    provider files, fixtures, observability, scripts, or .env.
+
+Create pipeline tests in tests/agent/. Cover successful execution,
+budget limits, partial enrichment, injected provider failures,
+malformed model output, and the model-call cap.
+
+Before editing, identify any ambiguity in the existing interfaces.
+If a decision is unclear, report it rather than inventing a shared
+contract.
+
+After implementation run:
+- npx vitest run
+- npx tsc --noEmit
+- npm run lint
+
+Do not commit or push anything.
+</pasted_content id="bb62">
+
+---
+
+We have implemented the naive SignalScout AI baseline pipeline.
+
+The reported results are:
+- 80 Vitest tests passed
+- TypeScript passed
+- ESLint passed
+
+Before the baseline is committed or any real model calls are made,
+perform a read-only audit of the existing implementation.
+
+Do not modify any files.
+Do not run Git commands.
+Do not read or print .env.
+Do not call Crustdata, LiteLLM or neatlogs.
+
+Inspect these files as applicable:
+- src/core/agent/openai-llm.ts
+- src/core/agent/pipeline.ts
+- src/core/agent/assess.ts
+- src/core/agent/recorder.ts
+- src/core/agent/neatlogs-tracer.ts
+- src/core/agent/tracer.ts
+- src/core/agent/types.ts
+- src/core/observability/tracing.ts
+- scripts/hello-trace.ts
+
+Check the following requirements:
+
+1. The model name is read from RunConfig, not hardcoded.
+2. The model request uses temperature 0.
+3. The maximum output tokens and model-call caps are enforced.
+4. Model calls are never made in parallel.
+5. The OpenAI SDK adapter uses wrapOpenAI.
+6. The adapter retrieves x-litellm-response-cost using withResponse
+   where supported.
+7. If gateway cost retrieval is unavailable, the fallback
+   calculation uses token usage and is explicitly labelled estimated.
+8. The shared key spend and per-run model spending limits are
+   handled according to the latest agreed configuration.
+   Report if those limits are missing or undecided.
+9. Rate-limited responses receive only bounded retries, with a
+   final rate_limited error if retries are exhausted.
+10. Provider calls remain within search and enrichment limits.
+11. Enrichment responses are matched against requested URLs.
+12. The pipeline remains a naive baseline, without validation,
+    deduplication, buildFacts(), validateAssessment() or checkClaims().
+13. initTracing() is called by the actual intended entry point.
+    Distinguish a tested adapter from a successful end-to-end trace.
+14. Identify how the baseline can be run with synthetic fixtures
+    and fake LLM tests without real API calls.
+15. Identify what is still needed for a controlled real-model
+    baseline trace.
+
+For each requirement, report PASS, MISSING or NEEDS CONFIRMATION,
+with the relevant file and function names.
+
+Do not fix anything yet. Return the audit findings and a list
+of blockers before the baseline can be recorded.
+
+---
+
+<pasted_content id="bb62">
+We are building SignalScout AI for neatHack 2026.
+
+I need you to fix the issues identified in your previous
+read-only audit of the naive baseline pipeline.
+
+IMPORTANT CONTEXT
+
+The naive baseline pipeline has already been implemented in
+src/core/agent/.
+
+Your previous report stated that:
+- 80 Vitest tests passed.
+- TypeScript checking passed.
+- ESLint passed.
+- The pipeline uses synthetic fixtures and a fake LLM for tests.
+- No real Crustdata, LiteLLM or neatlogs calls were made.
+
+However, the audit identified several blockers before the
+real-model baseline can be recorded.
+
+The key findings were:
+1. temperature: 0 is missing from model requests.
+2. The OpenAI adapter does not yet use neatlogs' wrapOpenAI.
+3. Gateway-reported model cost is not captured.
+4. There is no labelled estimated-cost fallback.
+5. The SDK retry behavior is implicit and can multiply HTTP
+   requests beyond the pipeline's logical model-call count.
+6. Rate-limit failures are not classified as rate_limited.
+7. The request timeout is not explicitly configured.
+8. The agent's manual LLM span may duplicate the span produced
+   by wrapOpenAI.
+9. Per-run model spending and shared-key spending limits have
+   not yet been agreed and added to the shared configuration.
+10. The actual baseline pipeline has not yet been run with
+    tracing initialized.
+
+Your task is to implement the agent-owned fixes that can be
+completed safely without modifying shared files.
+
+==================================================
+1. REPOSITORY INSTRUCTIONS AND OWNERSHIP
+==================================================
+
+Before editing anything:
+
+1. Read CLAUDE.md and AGENTS.md.
+2. Read the existing files in src/core/agent/.
+3. Inspect src/core/types.ts.
+4. Inspect src/core/observability/tracing.ts.
+5. Inspect the installed OpenAI SDK version and the relevant
+   neatlogs package exports.
+6. Review the existing tests in tests/agent/.
+7. Run the current tests and checks before making changes.
+
+Use the installed package APIs and actual shared types.
+Do not rely on guessed method signatures or outdated examples.
+
+My ownership:
+- src/core/agent/**
+- src/app/**
+- tests/agent/**
+
+My teammate Abhijit owns:
+- src/core/types.ts
+- src/core/data/**
+- src/core/fixtures/**
+- src/core/observability/**
+- scripts/**
+- package.json and package-lock.json
+- top-level tests/** and shared configuration files
+
+STRICT FILE RULES:
+
+You may modify only:
+- src/core/agent/**
+- tests/agent/**
+
+Do not modify:
+- src/core/types.ts
+- src/core/data/**
+- src/core/fixtures/**
+- src/core/observability/**
+- scripts/**
+- src/app/**
+- package.json
+- package-lock.json
+- .gitignore
+- Next.js configuration
+- .env
+- any other shared or teammate-owned file
+
+Do not read, print, expose, or modify .env or any API key.
+
+Do not run Git commands, stage files, commit, push, or merge.
+
+Do not install or add dependencies.
+
+If a correct implementation requires changing a shared interface
+or configuration, report the blocker instead of working around
+the ownership boundary.
+
+==================================================
+2. PRESERVE THE NAIVE BASELINE
+==================================================
+
+The current pipeline is intentionally the naive baseline.
+
+Keep these baseline characteristics unchanged:
+
+1. Search companies through the existing provider interface.
+2. Enrich eligible companies in search order, within the
+   existing hard enrichment cap.
+3. Assess companies with the configured LLM.
+4. Generate outreach drafts as part of the assessment.
+5. Emit the existing pipeline events.
+6. Return the existing structured pipeline result.
+
+Do NOT introduce any of the following into the baseline:
+
+- validateCompanies()
+- Deduplication
+- buildFacts()
+- validateAssessment()
+- checkClaims()
+
+Do not filter out invalid records or duplicates to make the
+baseline results look better.
+
+The baseline must remain an honest representation of the
+workflow before the safeguards are added.
+
+Do not tune the baseline to exaggerate its weaknesses.
+
+Use synthetic fixtures for all development and testing.
+
+Do not run Crustdata, LiteLLM or neatlogs requests during
+this task.
+
+==================================================
+3. MODEL REQUEST CONFIGURATION
+==================================================
+
+Inspect src/core/agent/openai-llm.ts and the existing LlmClient
+and LlmRequest definitions.
+
+Implement the following:
+
+A. Temperature
+
+Every model request must explicitly use temperature: 0.
+
+Add the field to an agent-owned request type if appropriate,
+but do not change shared types merely to accomplish this.
+
+B. Model name
+
+Continue reading the model name from RunConfig.
+
+Do not hardcode a model name in the adapter.
+
+Use the configured value, including the current
+"claude-haiku" alias, unless the existing configuration is
+updated by my teammate.
+
+C. Output token limit
+
+Continue using max_output_tokens_per_call from RunConfig.
+
+Keep the existing output-token enforcement and truncation
+handling.
+
+D. Sequential execution
+
+Keep model calls sequential. Do not use Promise.all or another
+mechanism that makes model calls run concurrently.
+
+E. Model-call cap
+
+Preserve the existing max_llm_calls_per_run enforcement.
+
+Count each logical model attempt consistently. Retries must
+not be invisible in tracing or usage metadata.
+
+==================================================
+4. OPENAI SDK AND NEATLOGS INTEGRATION
+==================================================
+
+Abhijit requires the OpenAI SDK to be instrumented through
+neatlogs' wrapOpenAI integration.
+
+Inspect the real API signatures in the installed packages.
+
+Implement an agent-owned factory or adapter that:
+
+1. Accepts its required configuration explicitly, such as the
+   API key, base URL, timeout, and model client options.
+2. Constructs the OpenAI SDK client with the configured
+   LiteLLM gateway URL.
+3. Sets maxRetries explicitly so the SDK cannot silently apply
+   its default retry policy on top of our own.
+4. Uses wrapOpenAI from the installed neatlogs integration.
+5. Provides the resulting client to the existing OpenAI LLM
+   adapter.
+6. Does not read process.env itself.
+7. Does not print credentials or include them in errors.
+8. Does not initialize or close tracing inside the LLM adapter.
+
+The configured API key must be supplied by the caller. Never
+read or print .env.
+
+The shared gateway base URL is:
+
+https://litellm.vision.aivar.app/v1
+
+The model alias is read from RunConfig.
+
+Do not send any real request to this gateway during this task.
+
+Use a mocked OpenAI transport or equivalent isolated tests.
+
+Verify the actual installed API for wrapOpenAI before using it.
+
+If the wrapped client does not support withResponse() as
+expected, do not claim that gateway cost extraction works.
+Investigate the actual API and report any unresolved blocker.
+
+==================================================
+5. COST ACCOUNTING
+==================================================
+
+Abhijit requires model cost to be recorded accurately, with
+explicit labels distinguishing gateway-reported cost from
+estimated cost.
+
+Implement this within agent-owned files and types.
+
+A. Gateway-reported cost
+
+Use the OpenAI SDK's withResponse() mechanism on the model
+completion request.
+
+Inspect the response headers and extract:
+
+- x-litellm-response-cost
+- x-litellm-key-spend
+- x-litellm-key-max-budget
+
+For x-litellm-response-cost:
+
+- Parse the header as a finite, non-negative number.
+- If valid, use it as the cost for that model call.
+- Label the cost basis as gateway_reported.
+
+Test whether this works after the client is wrapped with
+wrapOpenAI. Do not assume it does.
+
+B. Estimated-cost fallback
+
+If gateway-reported cost is unavailable, use the actual token
+usage when both input and output token counts are available.
+
+For now, use the rough fallback rates documented by Abhijit:
+
+- Input: $1.10 per 1,000,000 tokens.
+- Output: $5.50 per 1,000,000 tokens.
+
+The formula is:
+
+estimated_cost_usd =
+  (prompt_tokens / 1_000_000) * 1.10
+  +
+  (completion_tokens / 1_000_000) * 5.50
+
+Represent the result as estimated, never gateway_reported.
+
+Keep these rates in clearly named constants in an agent-owned
+file so they can be reviewed later.
+
+C. Missing usage or cost
+
+If neither a valid gateway cost nor sufficient token usage is
+available, mark cost as unavailable.
+
+Do not silently report a missing model cost as an actual $0 cost.
+
+D. Usage metadata
+
+Where available, capture:
+
+- prompt tokens
+- completion tokens
+- model name
+- logical call number
+- number of HTTP attempts
+- cost amount
+- cost basis
+- shared-key spend metadata from response headers
+
+Keep metadata consistent between the agent result and the
+pipeline events.
+
+Do not modify shared types just to store this metadata.
+Use agent-owned types where necessary.
+
+E. Shared-key and per-run cost limits
+
+The shared RunConfig does not yet contain an agreed per-run
+model spending cap, and my teammate owns the shared
+configuration.
+
+Do NOT invent shared fields or silently hardcode the proposed
+$0.50 per-run or $15 shared-key thresholds.
+
+Capture gateway cost and spend metadata, and identify exactly
+what configuration or guard is still needed.
+
+If a required safety limit cannot be enforced with the current
+interfaces, report it as a blocker before real-model execution.
+
+No real model calls are permitted during this task.
+
+==================================================
+6. RETRY AND ERROR HANDLING
+==================================================
+
+The previous audit found that the OpenAI SDK currently retries
+automatically by default, which could multiply HTTP requests
+without those attempts being visible to our pipeline.
+
+Implement an explicit retry policy.
+
+Requirements:
+
+1. Disable implicit SDK retries in the client constructed by
+   your agent-owned factory.
+2. Implement a bounded manual retry policy.
+3. Retry rate-limit responses only, unless the existing
+   conventions explicitly require other retryable errors.
+4. Use Retry-After when provided and valid.
+5. Do not retry indefinitely.
+6. Do not run retries concurrently.
+7. Record the number of HTTP attempts.
+8. When retries are exhausted, return a structured
+   rate_limited error.
+9. Do not convert rate-limit exhaustion into an unclassified
+   generic error.
+10. Preserve clear distinctions between:
+    - rate_limited
+    - timeout
+    - authentication failure
+    - provider unavailable
+    - malformed model response
+    - other model errors
+
+Use a clearly named, bounded retry constant in an
+agent-owned file.
+
+Unless the existing project conventions specify otherwise,
+allow no more than two retries after the initial attempt.
+
+Honor Retry-After safely. If the required wait exceeds the
+allowed retry wait or total request deadline, stop retrying
+and return rate_limited rather than retrying too early.
+
+Do not exceed the configured logical model-call cap.
+
+Record final failure information and attempt counts in the
+pipeline result and events without exposing secrets.
+
+==================================================
+7. REQUEST TIMEOUT
+==================================================
+
+The OpenAI SDK previously used a default timeout of up to
+10 minutes, which is too long for our controlled baseline.
+
+Configure an explicit request timeout in the constructed
+client.
+
+Use 30 seconds per HTTP attempt as the initial default unless
+the existing project has a clearly documented timeout policy.
+
+Make the timeout configurable through an agent-owned factory
+option if appropriate.
+
+Test timeout handling with mocked requests.
+
+Do not use an actual slow network request for testing.
+
+If retry attempts would exceed the overall allowed time for
+a logical call, stop retrying.
+
+==================================================
+8. TRACING AND DUPLICATE SPANS
+==================================================
+
+Do not modify src/core/observability/tracing.ts.
+
+Abhijit owns the tracing module and will use it for the official
+baseline and improved evidence runs.
+
+Your task is to make the agent-side integration compatible
+with it.
+
+Inspect:
+
+- src/core/agent/tracer.ts
+- src/core/agent/neatlogs-tracer.ts
+- src/core/agent/pipeline.ts
+- src/core/observability/tracing.ts
+- the installed neatlogs integration
+
+The previous audit found that the pipeline manually creates
+an LLM span for each company, while wrapOpenAI may create its
+own LLM span.
+
+Avoid duplicating the LLM span:
+
+- The wrapped OpenAI SDK should record model calls.
+- The manual assessment span should represent the agent's
+  decision or orchestration.
+- Use only span kinds supported by the installed library.
+- Preserve the pipeline's existing event behavior.
+- Do not assume a span is recorded merely because the adapter
+  is present.
+
+Do not call initTracing() or closeTracing() from the adapter.
+Do not create or modify scripts.
+
+The official baseline entry point will be coordinated with
+Abhijit.
+
+Tests may use mocked clients and a recording tracer, but do
+not make network requests to neatlogs.
+
+==================================================
+9. TESTS TO ADD OR UPDATE
+==================================================
+
+Add tests only under tests/agent/.
+
+Preserve the current baseline behavior and existing tests.
+
+Test all of the following:
+
+A. Model parameters
+- Uses the model from RunConfig.
+- Sends temperature 0.
+- Sends the configured output-token limit.
+- Remains sequential.
+
+B. OpenAI SDK integration
+- Uses the documented wrapOpenAI API.
+- Uses maxRetries: 0 for the SDK client where supported.
+- Configures the explicit timeout.
+- Uses withResponse() correctly.
+- Does not require a real API key or network call in tests.
+
+C. Cost handling
+- Parses a valid x-litellm-response-cost header.
+- Rejects invalid, negative, infinite or non-numeric cost values.
+- Labels a gateway-reported cost as gateway_reported.
+- Uses token-based fallback if the cost header is absent.
+- Labels the fallback as estimated.
+- Returns unavailable when neither cost nor complete token
+  usage is available.
+- Does not silently label an estimate as measured.
+- Captures shared-key spend headers when present.
+
+D. Retry behavior
+- Retries a mocked rate-limit response only within the limit.
+- Honors a valid Retry-After value.
+- Stops when the retry limit is reached.
+- Returns rate_limited after exhausted retries.
+- Does not generate hidden SDK retries.
+- Records attempts correctly.
+- Stops when the timeout/deadline is exceeded.
+
+E. Error handling
+- Timeout becomes the appropriate categorized error.
+- Authentication failures are not mislabeled as rate limits.
+- Malformed model output is handled as before.
+- Errors never expose API keys or authorization headers.
+
+F. Tracing
+- Avoids duplicate manual LLM spans when the wrapped SDK
+  instruments model calls.
+- Keeps the naive baseline pipeline intact.
+- Tests do not call a real neatlogs service.
+
+Use mocked SDK responses and mocked headers. No external API
+calls are permitted.
+
+==================================================
+10. SPENDING SAFETY AND CURRENT LIMITATIONS
+==================================================
+
+Do not run any real model calls during this task.
+
+Do not run Crustdata requests.
+
+Do not record the official baseline trace yet.
+
+Do not try to make a real tracing entry point in scripts or
+the frontend. Abhijit owns that integration.
+
+The following decisions remain with my teammate:
+
+- Per-run model spending cap.
+- Shared-key spend threshold.
+- Any corresponding shared RunConfig fields.
+- The official trace entry point and evidence-run configuration.
+
+Do not make up an implementation that claims these limits
+are enforced when their required configuration is absent.
+
+Report any remaining blockers after your agent-side fixes.
+
+==================================================
+11. PRESERVE THE BASELINE EXPERIMENT
+==================================================
+
+The current pipeline must remain the naive baseline.
+
+Do not add:
+- validation
+- deduplication
+- buildFacts()
+- validateAssessment()
+- checkClaims()
+
+Do not change the sequence or behavior of the baseline merely
+to make its outputs appear worse or better.
+
+These safeguards will be added later in separate commits.
+
+==================================================
+12. FINAL VERIFICATION
+==================================================
+
+Before modifying files, run the current test and quality checks
+if possible, so we have a known starting point.
+
+After implementing the changes, run:
+
+npx vitest run
+
+npx tsc --noEmit
+
+npm run lint
+
+Report:
+
+1. Every modified file.
+2. The implementation changes made.
+3. Test results, including any failures.
+4. Whether wrapOpenAI plus withResponse() works in the
+   installed versions.
+5. How gateway-reported and estimated costs are distinguished.
+6. How retries, timeouts and error categories work.
+7. Whether duplicate LLM spans have been avoided.
+8. Which spending limits are still missing or awaiting
+   confirmation from Abhijit.
+9. Whether the code remains strictly a naive baseline.
+10. What must be completed before the official baseline trace.
+
+Do not commit or push.
+
+Do not claim a requirement passes unless you tested it or
+verified it from the actual installed code.
+
+Start by inspecting the existing implementation and listing
+any changes that depend on unresolved decisions. Then make
+only the permitted agent-side changes.
+</pasted_content id="bb62">
+
+---
+
+<pasted_content id="bb62">
+We are continuing development of SignalScout AI on the
+garvit/frontend-shell branch.
+
+The current state:
+- All 146 Vitest tests pass.
+- npx tsc --noEmit passes.
+- npm run lint passes.
+- The naive baseline pipeline exists in src/core/agent/.
+- Synthetic fixtures and FixtureProvider already exist.
+- A fake LLM is available in src/core/agent/fake-llm.ts.
+- Spending controls and the official neatlogs trace entry point
+  are still awaiting confirmation from my teammate.
+
+TASK: VERIFY THE NAIVE BASELINE LOCALLY.
+
+First, inspect the existing pipeline, fixtures, provider,
+fake LLM, tests, and shared RunConfig.
+
+Then determine the safest way to execute the complete naive
+baseline using only synthetic fixtures and the fake LLM.
+
+Requirements:
+1. Use the existing pipeline and interfaces.
+2. Exercise search, enrichment, assessment, and outreach
+   generation.
+3. Print a concise summary of the run:
+   - run status
+   - companies searched
+   - enrichment requests and results
+   - prospects assessed
+   - outreach drafts generated
+   - provider costs, clearly labelled simulated
+   - model usage and cost basis, if available
+   - errors and skipped prospects
+4. Confirm that the configured search, enrichment, and model
+   call caps are respected.
+5. Do not add validation, deduplication, buildFacts(),
+   validateAssessment(), or checkClaims() to the baseline.
+6. Do not call real Crustdata, LiteLLM, or neatlogs services.
+7. Do not read or print .env or any credentials.
+8. Do not modify shared files, tracing.ts, scripts/,
+   package.json, or package-lock.json.
+9. Do not commit or push.
+
+Prefer an existing test or an agent-owned test harness.
+If a new test is necessary, add it only under tests/agent/.
+
+Run:
+- npx vitest run
+- npx tsc --noEmit
+- npm run lint
+
+At the end, report whether the complete baseline ran
+successfully, the metrics produced, all changed files, and
+any remaining blockers.
+
+Do not claim that an official neatlogs trace was captured.
+</pasted_content id="bb62">
+
+---
+
+<pasted_content id="bb62">
+Please review the new test at tests/agent/baseline-run.test.ts
+and make a minimal correction to the baseline test reporting.
+
+Two issues need checking:
+
+1. The report says "10 HTTP attempts" even though the test uses
+   FakeLlmClient and replaces global fetch with a throwing stub.
+
+   Inspect how this metric is recorded. Do not assume that a
+   logical model invocation means an actual HTTP request.
+
+   Report logical LLM invocations separately from simulated HTTP
+   attempts and actual network requests. Make sure the labels
+   accurately reflect what the test measures.
+
+2. The report says "Errors or skipped prospects: none", while
+   also reporting 7 skipped_budget and 1 skipped_no_linkedin.
+
+   Separate pipeline errors from skipped prospects. The summary
+   should accurately report the skip counts and their reasons.
+
+Constraints:
+- Keep the baseline naive.
+- Do not change production pipeline behaviour unless the inspection
+  identifies a genuine bug that requires a separate explanation.
+- Do not call real Crustdata, LiteLLM, or neatlogs services.
+- Do not read or print .env or credentials.
+- Do not modify shared types, tracing.ts, scripts/, package.json,
+  or package-lock.json.
+- Do not commit or push.
+
+Run:
+npx vitest run
+npx tsc --noEmit
+npm run lint
+
+At the end, report exactly what changed and the results of all
+three checks. Clearly distinguish measured values, simulated
+values, and estimated costs.
+</pasted_content id="bb62">

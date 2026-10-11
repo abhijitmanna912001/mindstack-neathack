@@ -1,0 +1,93 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4MGDKJZG99Y14Z055D6XJTE",
+  "session_id": "eb0222ff-63f7-4e9c-8aba-50e7ef11152a",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-11T03:34:40.3429365Z",
+  "branch": "garvit/frontend-shell",
+  "checkpoints_count": 6,
+  "save_step_count": 4,
+  "files_touched": [
+    "src/core/agent/assess.ts",
+    "src/core/agent/enrich.ts",
+    "src/core/agent/fake-llm.ts",
+    "src/core/agent/gateway-client.ts",
+    "src/core/agent/icp.ts",
+    "src/core/agent/index.ts",
+    "src/core/agent/llm-cost.ts",
+    "src/core/agent/llm-policy.ts",
+    "src/core/agent/llm.ts",
+    "src/core/agent/neatlogs-tracer.ts",
+    "src/core/agent/openai-llm.ts",
+    "src/core/agent/pipeline.ts",
+    "src/core/agent/recorder.ts",
+    "src/core/agent/tracer.ts",
+    "src/core/agent/types.ts",
+    "tests/agent/assess.test.ts",
+    "tests/agent/baseline-run.test.ts",
+    "tests/agent/gateway-client.test.ts",
+    "tests/agent/helpers.ts",
+    "tests/agent/icp.test.ts",
+    "tests/agent/llm-cost.test.ts",
+    "tests/agent/neatlogs-tracer.test.ts",
+    "tests/agent/pipeline.test.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "34855cc6029a",
+  "checkpoint_transcript_start": 579,
+  "transcript_lines_at_start": 579,
+  "compact_transcript_start": 77,
+  "token_usage": {
+    "input_tokens": 152,
+    "cache_creation_tokens": 511044,
+    "cache_read_tokens": 26414655,
+    "output_tokens": 167161,
+    "api_call_count": 76
+  },
+  "session_metrics": {
+    "turn_count": 12
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-11T03:34:39.9537357Z",
+    "agent_lines": 3483,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3483,
+    "total_lines_changed": 3483,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1801,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3308,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3427,
+      "agent_lines_removed": 0
+    }
+  ]
+}
