@@ -48,6 +48,44 @@ describe("FixtureProvider caps", () => {
   });
 });
 
+describe("FixtureProvider cost_per_record", () => {
+  const prices = { search: 0.1, enrich: 0.5 };
+
+  it("charges per record returned by search", async () => {
+    const p = make(100, 15, { cost_per_record: prices });
+    const r = await p.searchCompanies(open, 3);
+    expect(r.ok && r.cost_usd).toBeCloseTo(0.3);
+    expect(p.budget.snapshot().cost_usd).toBeCloseTo(0.3);
+  });
+
+  it("charges per record matched by enrich, not requested", async () => {
+    const p = make(100, 15, { cost_per_record: prices });
+    const known = FIXTURE_COMPANIES[0].professional_network_url;
+    const r = await p.enrichCompanies([known, "https://www.linkedin.com/company/nope"]);
+    expect(r.ok && r.cost_usd).toBeCloseTo(0.5);
+  });
+
+  it("treats a missing price as free", async () => {
+    const r = await make(100, 15, { cost_per_record: { enrich: 1 } }).searchCompanies(open, 2);
+    expect(r.ok && r.cost_usd).toBe(0);
+  });
+
+  it("charges nothing for failed calls", async () => {
+    const p = make(100, 15, {
+      cost_per_record: prices,
+      failures: [{ call_number: 1, category: "rate_limited" }],
+    });
+    expect((await p.searchCompanies(open, 2)).ok).toBe(false);
+    expect(p.budget.snapshot().cost_usd).toBe(0);
+  });
+
+  it("lets cost_usd take precedence", async () => {
+    const p = make(100, 15, { cost_usd: 0.5, cost_per_record: prices });
+    const r = await p.searchCompanies(open, 3);
+    expect(r.ok && r.cost_usd).toBe(0.5);
+  });
+});
+
 describe("FixtureProvider failure injection", () => {
   it("fails only the Nth call, then recovers", async () => {
     const p = make(100, 15, { failures: [{ call_number: 2, category: "rate_limited" }] });

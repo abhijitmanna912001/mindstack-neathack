@@ -23,6 +23,9 @@ export interface FixtureProviderOptions {
   // Cost of each call: a fixed amount, or a function of the 1-based call
   // number. Default 0.
   readonly cost_usd?: number | ((call_number: number) => number);
+  // Price per record, used only when cost_usd is not given: a successful call
+  // costs the price times the records returned (search) or matched (enrich).
+  readonly cost_per_record?: { readonly search?: number; readonly enrich?: number };
   readonly failures?: readonly InjectedFailure[];
   // Defaults to the synthetic fixtures.
   readonly companies?: readonly RawCompany[];
@@ -31,6 +34,8 @@ export interface FixtureProviderOptions {
 export class FixtureProvider implements CompanyProvider {
   readonly budget: BudgetGuard;
   private readonly cost_usd: number | ((call_number: number) => number);
+  private readonly cost_per_record: { readonly search: number; readonly enrich: number };
+  private readonly per_record_pricing: boolean;
   private readonly failures: readonly InjectedFailure[];
   private readonly companies: readonly RawCompany[];
   private call_count = 0;
@@ -38,6 +43,12 @@ export class FixtureProvider implements CompanyProvider {
   constructor(options: FixtureProviderOptions) {
     this.budget = new BudgetGuard(options.config);
     this.cost_usd = options.cost_usd ?? 0;
+    this.per_record_pricing =
+      options.cost_usd === undefined && options.cost_per_record !== undefined;
+    this.cost_per_record = {
+      search: options.cost_per_record?.search ?? 0,
+      enrich: options.cost_per_record?.enrich ?? 0,
+    };
     this.failures = options.failures ?? [];
     this.companies = options.companies ?? FIXTURE_COMPANIES;
   }
@@ -96,8 +107,9 @@ export class FixtureProvider implements CompanyProvider {
       .slice(0, limit)
       .map((c): RawCompany => ({ ...c, source: "search" }));
     if (found.length === 0) return fail("no_match", "no companies match the filters");
-    this.budget.recordSearch(found.length, cost);
-    return { ok: true, data: found, cost_usd: cost, calls: 1 };
+    const total = this.per_record_pricing ? this.cost_per_record.search * found.length : cost;
+    this.budget.recordSearch(found.length, total);
+    return { ok: true, data: found, cost_usd: total, calls: 1 };
   }
 
   async enrichCompanies(
@@ -114,8 +126,9 @@ export class FixtureProvider implements CompanyProvider {
     );
     // Unmatched URLs are simply absent from data; if none match, no_match.
     if (found.length === 0) return fail("no_match", "no fixture matches the LinkedIn URLs");
-    this.budget.recordEnrich(found.length, cost);
-    return { ok: true, data: found, cost_usd: cost, calls: 1 };
+    const total = this.per_record_pricing ? this.cost_per_record.enrich * found.length : cost;
+    this.budget.recordEnrich(found.length, total);
+    return { ok: true, data: found, cost_usd: total, calls: 1 };
   }
 }
 
