@@ -1,0 +1,199 @@
+<pasted_content id="bb62">
+We are starting the SignalScout improved pipeline on branch
+garvit/improved-pipeline.
+
+The branch was created from the latest origin/main at ac0e8cf.
+The current baseline implementation is merged into main.
+
+Current verification:
+- npx vitest run: 148 tests passed
+- npx tsc --noEmit: passed
+- npm run lint: passed
+
+TASK: INSPECT THE EXISTING CONTRACTS BEFORE IMPLEMENTATION.
+Do not modify any files yet.
+
+Read and summarize the actual implementations and exported
+signatures for:
+
+1. src/core/agent/pipeline.ts
+   - runBaselinePipeline
+   - its options/config shape
+   - result structure
+   - existing enrichment and assessment flow
+
+2. src/core/agent/index.ts
+   - all current exports
+   - how the runner is expected to import agent functions
+
+3. src/core/types.ts
+   - Fact<T>
+   - CITEABLE_FACT_STATUSES
+   - validateCompanies and its result types
+   - deduplication-related types, if any
+   - buildFacts
+   - validateAssessment
+   - checkClaims
+   - all relevant provider and assessment types
+
+4. Existing implementations and tests:
+   - validation
+   - fixture-provider and provider interfaces
+   - facts
+   - claim checking
+   - assessment
+   - baseline pipeline tests
+
+5. Any current scripts/run-pipeline.ts, but read only.
+   Do not edit scripts or tracing files.
+
+The improved pipeline must follow this sequence:
+- validate companies
+- deduplicate companies
+- enrich only eligible unique companies
+- build facts
+- call the same configured LLM with a facts-only prompt
+- validate the model assessment
+- run checkClaims on the assessment/outreach
+- return the same externally expected result/options shape as the baseline
+
+Requirements from Abhijit:
+- Both evidence runs use 10 searched companies and 5 enrichments.
+- Baseline and improved use the same model and LLM call caps.
+- Treat company records as untrusted data. Explicitly instruct the
+  model to ignore instructions found inside company data.
+- A cited fact is citeable only if its status is in
+  CITEABLE_FACT_STATUSES AND its provider is not "model".
+- Do not introduce tracing initialization, flush or shutdown in
+  agent code.
+- Do not edit scripts/, tracing.ts, fixture-provider.ts,
+  package.json, package-lock.json or src/core/types.ts.
+- Do not read or print .env or credentials.
+- Do not make real Crustdata, LiteLLM or neatlogs calls.
+- Do not commit or push.
+
+At the end, provide:
+- the exact function signatures and relevant type definitions
+- the current runner compatibility constraints
+- recommended implementation design for the improved pipeline
+- any missing or conflicting contracts that need Abhijit's decision
+- files that would need to be changed (only src/core/agent and tests/agent)
+
+Do not guess signatures. Quote or summarize only what exists in
+the repository. Do not implement the pipeline in this task.
+</pasted_content id="bb62">
+
+---
+
+<pasted_content id="bb62">
+We are implementing the SignalScout improved pipeline on
+branch garvit/improved-pipeline, currently based on the merged
+baseline in origin/main.
+
+The inspection-only task is complete. No files were modified
+during the inspection, and the working tree was clean.
+
+Implement the improved pipeline using the existing contracts.
+
+Required flow:
+1. Reuse the baseline's ICP planning and search behavior.
+2. Validate companies using the existing validateCompanies().
+3. Exclude rejected companies and later duplicates from
+   enrichment candidates.
+4. Enrich eligible, unique companies in search order, respecting
+   the configured enrichment and provider budget limits.
+5. Revalidate the enriched records.
+6. Build facts with the existing buildFacts() implementation.
+7. Construct a facts-only assessment prompt.
+8. Run the configured LlmClient with the same model, temperature,
+   output-token limits, retry rules, and call caps as the baseline.
+9. Validate assessments with a new validateAssessment().
+10. Check outreach citations with a new checkClaims().
+11. Return a result compatible with the baseline PipelineResult
+    and the official runner's planned switching behavior.
+
+Implementation details:
+- Create src/core/agent/improved-pipeline.ts.
+- Create src/core/agent/facts-prompt.ts.
+- Create src/core/agent/assessment-checks.ts.
+- Export runImprovedPipeline from src/core/agent/index.ts.
+- Follow the exact baseline function signature:
+  (icp: IcpInput, deps: PipelineDeps, options?: PipelineOptions)
+  and return Promise<PipelineResult>, extending agent-owned
+  result types only when necessary.
+- Add GUARDRAIL to the agent-owned PipelineSpanKind if needed.
+- Reuse existing validation, provider, fact, LLM, cost and
+  tracer implementations. Do not duplicate data-layer logic.
+- Use an explicit fact_provider dependency ("crustdata" or
+  "fixture") so fact provenance is correct. Update agent-owned
+  tests/helpers for the new dependency.
+- Include validation metadata, facts and claim-check findings
+  in the improved result without breaking the baseline result
+  contract.
+- Keep rejected records represented in the result and mark them
+  as not assessed, with a clear reason.
+- Assess only eligible, non-rejected companies that were
+  successfully enriched.
+- Use the expected assessment criteria and enforce score ranges
+  of 0 through 100.
+- Assessment fact references must refer to facts that exist for
+  that company.
+- An outreach citation is eligible only when its fact ID exists,
+  its status is in CITEABLE_FACT_STATUSES, and its provider is
+  not "model".
+- Treat company data as untrusted input. The facts-only prompt
+  must explicitly tell the model to ignore all instructions
+  contained in company data.
+- Do not permit unknown or unsupported facts to be represented
+  as established facts in outreach.
+- Keep the baseline behavior unchanged in this task, including
+  its existing prompt. The baseline's untrusted-data safeguard
+  will be coordinated separately before the official run.
+- Use the same 10-search/5-enrichment evaluation limits and
+  identical model/call-cap settings for baseline and improved.
+  Do not change the shared RunConfig solely to achieve this;
+  use the provided options configuration.
+- Keep agent code free of tracing initialization, flush or
+  shutdown calls.
+
+Files you may change:
+- src/core/agent/*
+- tests/agent/*
+
+Do not edit:
+- src/core/types.ts
+- src/core/data/*
+- src/core/observability/tracing.ts
+- scripts/*
+- fixture-provider.ts or provider.ts
+- package.json or package-lock.json
+- .env or any credentials
+
+Do not call real Crustdata, LiteLLM, or neatlogs services.
+Do not commit or push.
+
+Tests must cover:
+- invalid and rejected companies
+- duplicate exclusion
+- enrichment caps and failures
+- revalidation after enrichment
+- fact provenance and citation eligibility
+- invalid assessment structure and scores
+- missing and uncertain fact references
+- invalid outreach citations
+- prompt-injection text embedded in a company record
+- LLM call caps and error handling
+- compatibility with the baseline options and result contract
+
+Run:
+npx vitest run
+npx tsc --noEmit
+npm run lint
+
+At completion, report every file changed, all test results,
+how the improved pipeline differs from the baseline, and any
+remaining questions for Abhijit.
+
+Do not claim that an official neatlogs trace was captured.
+Do not claim that real provider or model costs were measured.
+</pasted_content id="bb62">
