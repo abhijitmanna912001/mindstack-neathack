@@ -5,10 +5,15 @@
 
 import type { Assessment, CriterionScore, OutreachDraft } from "../types";
 import type { LlmMessage } from "./llm";
+import { PROMPT_SAFETY_RULES } from "./prompt-rules";
 import type { BaselineProspect, IcpInput } from "./types";
 
-const SYSTEM_PROMPT = `You are SignalScout, a B2B prospect qualification assistant.
+// Baseline system prompt. Apart from the shared safety rules it is unchanged
+// from the original naive baseline.
+export const BASELINE_SYSTEM_PROMPT = `You are SignalScout, a B2B prospect qualification assistant.
 Assess how well one company fits the user's ideal customer profile and draft a short first outreach message.
+
+${PROMPT_SAFETY_RULES}
 
 Reply with one JSON object and nothing else, in exactly this shape:
 {
@@ -41,7 +46,7 @@ export function buildAssessmentMessages(
     `Company record (JSON):\n${JSON.stringify(prospect.raw, null, 2)}`,
   );
   return [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: BASELINE_SYSTEM_PROMPT },
     { role: "user", content: lines.join("\n\n") },
   ];
 }

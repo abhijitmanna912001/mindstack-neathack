@@ -5,7 +5,11 @@
 
 export { runBaselinePipeline } from "./pipeline";
 export { assessmentCriteria, buildSearchFilters, describeIcp } from "./icp";
-export { parseAssessment } from "./assess";
+export { BASELINE_SYSTEM_PROMPT, parseAssessment } from "./assess";
+// PROMPT_VERSION identifies the shared prompt-safety rules (PROMPT_SAFETY_RULES)
+// that both pipelines' prompts import, not a complete pipeline-specific
+// prompt; bump it when those rules change. See prompt-rules.ts.
+export { PROMPT_SAFETY_RULES, PROMPT_VERSION } from "./prompt-rules";
 export { FakeLlmClient, defaultFakeAssessment } from "./fake-llm";
 export type { FakeLlmReply, FakeLlmResponder } from "./fake-llm";
 export type {
