@@ -4,13 +4,16 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { connectPgStore, type PgLiveStore } from "../../src/server/live/pg-store";
 
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
-suite("PgLiveStore against real Postgres", () => {
+// Remote managed databases are slow from some networks.
+suite("PgLiveStore against real Postgres", { timeout: 120_000 }, () => {
+  vi.setConfig({ hookTimeout: 120_000 });
+
   const schema = `live_it_${randomBytes(6).toString("hex")}`;
   let store: PgLiveStore;
   let close: () => Promise<void>;
