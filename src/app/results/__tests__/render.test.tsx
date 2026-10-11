@@ -49,8 +49,8 @@ describe("OfficialEvidencePanel", () => {
     ]) {
       expect(out).toContain(label);
     }
-    expect(out).toContain(`$${summary.baseline.model_cost_usd}`);
-    expect(out).toContain(`$${summary.improved.model_cost_usd}`);
+    expect(out).toContain(`$${summary.baseline.model_cost_usd.toFixed(4)}`);
+    expect(out).toContain(`$${summary.improved.model_cost_usd.toFixed(4)}`);
     expect(out).toContain(`$${summary.improved.provider_cost_usd}`);
   });
 

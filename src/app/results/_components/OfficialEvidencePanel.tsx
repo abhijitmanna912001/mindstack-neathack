@@ -1,6 +1,7 @@
 import { Panel } from "../../_components/results/Panel";
 import {
   EVIDENCE_METRICS,
+  type EvidenceMetricKey,
   type EvidenceState,
   type MetricGroup,
   METRIC_GROUP_LABELS,
@@ -8,11 +9,19 @@ import {
 } from "../_lib/evidence";
 import { Badge } from "./Badge";
 
-// Values exactly as the evidence file states them: no rounding, no
-// derivation. A metric a run does not report is shown as "not reported".
-function formatValue(value: number | undefined, unit: MetricUnit): string {
+// Metrics shown with a fixed number of decimal places. Model costs are small,
+// so they always show four (0.012 reads as $0.0120). Every other value is
+// shown exactly as the file states it.
+const FIXED_DECIMALS: Partial<Record<EvidenceMetricKey, number>> = { model_cost_usd: 4 };
+
+// Values as the evidence file states them, with no derivation; only the
+// display format above is applied. A metric a run does not report is shown
+// as "not reported".
+function formatValue(value: number | undefined, unit: MetricUnit, key: EvidenceMetricKey): string {
   if (value === undefined) return "not reported";
-  return unit === "usd" ? `$${value}` : String(value);
+  const decimals = FIXED_DECIMALS[key];
+  const shown = decimals === undefined ? String(value) : value.toFixed(decimals);
+  return unit === "usd" ? `$${shown}` : shown;
 }
 
 const GROUPS: readonly MetricGroup[] = ["enrichment", "assessment", "outreach", "model", "provider"];
@@ -79,10 +88,10 @@ export function OfficialEvidencePanel({ state }: { state: EvidenceState }) {
                       {m.label}
                     </th>
                     <td className="py-2 pr-4 tabular-nums text-slate-900 dark:text-slate-100">
-                      {formatValue(summary.baseline[m.key], m.unit)}
+                      {formatValue(summary.baseline[m.key], m.unit, m.key)}
                     </td>
                     <td className="py-2 tabular-nums text-slate-900 dark:text-slate-100">
-                      {formatValue(summary.improved[m.key], m.unit)}
+                      {formatValue(summary.improved[m.key], m.unit, m.key)}
                     </td>
                   </tr>
                 ))}
