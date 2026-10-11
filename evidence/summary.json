@@ -78,5 +78,54 @@
     },
     "provider_cost_usd_measured_per_run": 3.69,
     "caveat": "Flagged by a zero-tolerance rule (headcount outside the stated size band by any amount). The magnitude of the mismatches has not been analysed, so this is a rule outcome, not proof that the data is wrong."
+  },
+  "real_data_real_model": {
+    "source": "Crustdata live API and the real model (claude-haiku through the hackathon gateway), neatlogs tracing off, same records for both pipelines, company ids ascending",
+    "slice": "Staffing and Recruiting, India, 11-50 and 51-200 employees, first 10 by company id ascending (6779 companies match the filters)",
+    "privacy": "Real company profiles were sent to the model gateway in these runs. No company record is stored in the repository, in the run reports or in any trace.",
+    "searched": 10,
+    "enriched": 5,
+    "validation_after_enrichment": {
+      "valid": 7,
+      "flagged": 3,
+      "rejected": 0
+    },
+    "baseline": {
+      "assessed": 10,
+      "assessed_valid": 7,
+      "assessed_flagged": 3,
+      "model_calls": 10,
+      "tokens_in": 8239,
+      "tokens_out": 3306,
+      "model_cost_usd": 0.0272,
+      "outreach_drafts": 10,
+      "cited_fact_ids": 28,
+      "cited_not_citeable": 4,
+      "drafts_with_violations": 4
+    },
+    "improved": {
+      "assessed": 5,
+      "assessed_valid": 2,
+      "assessed_flagged": 3,
+      "model_calls": 5,
+      "tokens_in": 8300,
+      "tokens_out": 1870,
+      "model_cost_usd": 0.0194,
+      "outreach_drafts": 5,
+      "cited_fact_ids": 21,
+      "cited_not_citeable": 0,
+      "drafts_with_violations": 0,
+      "outreach_suppressed": 0,
+      "assessments_failed": 0,
+      "guard_errors": 0,
+      "guard_warnings_uncertain_fact_reference": 6
+    },
+    "provider_cost_usd_measured_per_run": 3.69,
+    "notes": [
+      "One run per pipeline on 10 live records, so this is a small sample, not a benchmark.",
+      "The same three companies were flagged in both runs by a zero-tolerance size rule whose magnitude was not analysed (see real_data.caveat).",
+      "Cited but not citeable means the model cited a fact id that is not one of our fact ids for that company; it can mean an invented field or a different field name.",
+      "Per assessment the improved prompt costs more; the total is lower because only enriched companies are assessed."
+    ]
   }
 }
