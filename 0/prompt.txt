@@ -1,0 +1,10 @@
+<pasted_content id="633c">
+Task: two small fixes in the live orchestration. Touch ONLY src/server/live/run-live.ts and tests/live/run-live.test.ts. Same rules as before: never read .env or print environment variables or keys; no network or database calls in tests.
+1. The 200 body's usage object must contain ONLY runsRemaining (remove searched, enriched and providerCostUsd). Cost information lives in the mapped results. Update every place and test that reads the removed fields.
+2. When the reserved mode is 'live' and the live dependencies are not available (deps.live is null, meaning keys are missing or live is not allowed by the runtime fail-safe), do not attempt the run: call releaseRun(runId) and return 503 { status: 'live_disabled', message } using the existing live_disabled fixed message. A live code must never produce 502 run_failed just because live is not configured. Keep every other early-failure behaviour as it is (factory throw, autocomplete failure and similar still give 502 run_failed after a release). Tests: a live code with live: null gives 503 live_disabled, releases the run, and constructs no factory; a synthetic code with live: null still runs normally.
+Run npx vitest run, npx tsc --noEmit and npm run lint. End with a plain-text SHORT REVIEW REPORT (under 20 lines, no code fences, no secrets): what changed and where, the new test names, the results, and anything you were unsure about.
+</pasted_content id="633c">
+
+---
+
+Task: edit ONLY tests/live/handlers.test.ts. The test around line 207 (a live-mode code with no live dependencies) expects HTTP 502; the intended behaviour is now HTTP 503 with body status 'live_disabled' (the run is given back and no factory is constructed). Update that expectation (and the test name if it mentions 502 or run_failed) and assert the body status is 'live_disabled'. Change nothing else. Run npx vitest run, npx tsc --noEmit and npm run lint. Summarise in 2 bullets.
