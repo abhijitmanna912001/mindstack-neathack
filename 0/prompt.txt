@@ -1,0 +1,10 @@
+<pasted_content id="adac">
+Task: extend scripts/run-pipeline.ts only. If you split the logic into pure helpers, put them in scripts/run-metrics.ts and test them in tests/run-metrics.test.ts; touch nothing else. Never read .env or print environment variables or keys. No new dependencies. First read src/core/agent/index.ts, pipeline.ts, types.ts and src/core/data/validation.ts.
+
+Add to the JSON report and to the console summary (counts only):
+1. Prompt provenance: PROMPT_VERSION (from the agent index), the sha256 of PROMPT_SAFETY_RULES, and the set of distinct sha256 hashes (first 12 hex characters) of every system-role message actually sent to the model in the run. Implement the last one with a small LlmClient wrapper defined in the script that delegates to the real or fake client and records hashes of system messages with node:crypto. Never store message text.
+2. Post-hoc validation metrics for the baseline, computed in memory after the run: run validateCompanies over all searched records in search order, then report counts: searched_valid/flagged/rejected; enriched_valid/flagged/rejected (the prospects the enrichment step enriched); delivered_valid/flagged/rejected (prospects that were assessed); wasted_enrichments = enriched_rejected. Add lists of company ids only for rejected-but-enriched and rejected-but-delivered, and the number of duplicate groups among delivered prospects (derive it from duplicate_domain issues).
+Raw company fields (names, domains, URLs) must never be printed or written to the report. Add one short console block "post-hoc validation (counts)".
+
+Run npx vitest run, npx tsc --noEmit and npm run lint. Do not run the script. Summarise in 6 bullets, including anything you were unsure about.
+</pasted_content id="adac">
