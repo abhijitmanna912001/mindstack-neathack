@@ -1,0 +1,26 @@
+{
+  "scenario": "Synthetic fixtures with known defects, claude-haiku at temperature 0, 10 searched and 5 enriched in both runs",
+  "source_reports": ["baseline-final", "improved-final"],
+  "provider_cost_basis": "simulated at measured Crustdata prices",
+  "baseline": {
+    "enrichments": 5, "wasted_enrichments": 1, "valid_companies_enriched": 2,
+    "assessed": 10, "assessed_valid": 3, "assessed_flagged": 5, "assessed_should_be_rejected": 2,
+    "model_calls": 10, "tokens_in": 5478, "tokens_out": 2232,
+    "model_cost_usd": 0.0183, "provider_cost_usd": 3.69,
+    "outreach_drafts": 8, "cited_fact_ids": 22, "cited_not_citeable": 4, "drafts_with_violations": 3
+  },
+  "improved": {
+    "enrichments": 5, "wasted_enrichments": 0, "valid_companies_enriched": 3,
+    "assessed": 5, "assessed_valid": 3, "assessed_flagged": 2, "assessed_should_be_rejected": 0,
+    "rejected_before_enrichment": 1, "duplicates_removed": 1,
+    "model_calls": 5, "tokens_in": 5052, "tokens_out": 1167,
+    "model_cost_usd": 0.012, "provider_cost_usd": 3.69,
+    "outreach_drafts": 5, "cited_fact_ids": 13, "cited_not_citeable": 0, "drafts_with_violations": 0,
+    "assessments_failed": 0, "outreach_suppressed": 0, "guard_findings": 0
+  },
+  "notes": [
+    "Zero suppressed outreach in a real run is not a guard catch: the guards verified every draft and found nothing to remove. The guards firing is shown by the deterministic cases and unit tests.",
+    "Per assessment the improved prompt costs more (longer facts prompt); the total is lower because only enriched companies are assessed."
+  ],
+  "real_data": null
+}
