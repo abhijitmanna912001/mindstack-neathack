@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ProspectWorkspace } from "./_components/ProspectWorkspace";
 
 export default function Home() {
@@ -12,6 +13,12 @@ export default function Home() {
           evidence behind each score, budget usage and draft outreach in one
           place.
         </p>
+        <Link
+          href="/results"
+          className="self-start text-sm font-semibold text-indigo-700 underline-offset-4 hover:underline dark:text-indigo-300"
+        >
+          See the results: official fixture evidence and a synthetic guardrail demo →
+        </Link>
       </div>
       <ProspectWorkspace />
     </main>
