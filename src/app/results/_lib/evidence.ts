@@ -56,9 +56,39 @@ export interface EvidenceSummary {
   readonly notes: readonly string[];
 }
 
-// real_data is null until a live-data evaluation exists. A non-null value
-// has no agreed schema yet, so it is acknowledged but never rendered.
-export type LiveDataState = { readonly state: "pending" } | { readonly state: "unsupported" };
+export interface ValidationCounts {
+  readonly valid: number;
+  readonly flagged: number;
+  readonly rejected: number;
+}
+
+// The live-data (real provider data) evaluation in real_data. Only these
+// approved counts and strings are kept; any other field is ignored.
+export interface LiveDataEvidence {
+  readonly source: string;
+  readonly slice: string;
+  readonly searched: number;
+  readonly enriched_in_both_pipelines: number;
+  readonly search_stage_validation: ValidationCounts;
+  readonly after_enrichment_validation: ValidationCounts;
+  readonly valid_to_flagged: number;
+  // Rule code -> times it fired, in the file's order.
+  readonly rules_fired: readonly { readonly code: string; readonly count: number }[];
+  readonly baseline_revalidates_after_enrichment: boolean;
+  readonly improved_assessed: { readonly valid: number; readonly flagged: number };
+  readonly provider_cost_usd_measured_per_run: number;
+  readonly caveat: string;
+  // Read from the source text: whether it states the fake model, no model
+  // calls and tracing off. The page only says so when the file does.
+  readonly source_states_no_real_model: boolean;
+}
+
+// real_data is null until a live-data evaluation exists. A malformed value
+// is rejected as a whole: nothing partial is ever shown.
+export type LiveDataState =
+  | { readonly state: "pending" }
+  | { readonly state: "invalid"; readonly errors: readonly string[] }
+  | { readonly state: "ready"; readonly data: LiveDataEvidence };
 
 export type EvidenceState =
   | { readonly state: "invalid"; readonly errors: readonly string[] }
@@ -103,6 +133,103 @@ function readRun(name: "baseline" | "improved", value: unknown, errors: string[]
   return metrics;
 }
 
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+// Rule codes look like "size_headcount_mismatch:latest_headcount": letters,
+// underscores, dots and one colon. No digits, so a company id or record
+// value can never pass as a rule code.
+const RULE_CODE = /^[a-z][a-z_]*(?::[a-z][a-z_.]*)?$/;
+const MAX_RULE_CODE = 80;
+
+function readValidationCounts(name: string, value: unknown, errors: string[]): ValidationCounts | undefined {
+  if (!isRecord(value)) {
+    errors.push(`real_data.${name} must be an object.`);
+    return undefined;
+  }
+  for (const key of ["valid", "flagged", "rejected"] as const) {
+    if (!isCount(value[key])) errors.push(`real_data.${name}.${key} must be a non-negative integer.`);
+  }
+  return isCount(value.valid) && isCount(value.flagged) && isCount(value.rejected)
+    ? { valid: value.valid, flagged: value.flagged, rejected: value.rejected }
+    : undefined;
+}
+
+export function parseLiveData(input: unknown): LiveDataState {
+  if (input === null) return { state: "pending" };
+  if (!isRecord(input)) return { state: "invalid", errors: ["real_data must be null or an object."] };
+  const errors: string[] = [];
+
+  for (const key of ["source", "slice"] as const) {
+    if (!isText(input[key])) errors.push(`real_data.${key} must be a non-empty string.`);
+  }
+  if (!isText(input.caveat, MAX_NOTE)) errors.push("real_data.caveat must be a non-empty string.");
+  for (const key of ["searched", "enriched_in_both_pipelines"] as const) {
+    if (!isCount(input[key])) errors.push(`real_data.${key} must be a non-negative integer.`);
+  }
+  const search = readValidationCounts("search_stage_validation", input.search_stage_validation, errors);
+  const after = readValidationCounts("after_enrichment_validation", input.after_enrichment_validation, errors);
+
+  const changed = input.changed_by_enrichment;
+  if (!isRecord(changed) || !isCount(changed.valid_to_flagged)) {
+    errors.push("real_data.changed_by_enrichment.valid_to_flagged must be a non-negative integer.");
+  }
+
+  const rules: { code: string; count: number }[] = [];
+  if (!isRecord(input.rules_fired)) {
+    errors.push("real_data.rules_fired must be an object.");
+  } else {
+    for (const [code, count] of Object.entries(input.rules_fired)) {
+      if (code.length > MAX_RULE_CODE || !RULE_CODE.test(code)) {
+        errors.push("real_data.rules_fired contains a key that is not a rule code.");
+      } else if (!isCount(count)) {
+        errors.push(`real_data.rules_fired.${code} must be a non-negative integer.`);
+      } else {
+        rules.push({ code, count });
+      }
+    }
+  }
+
+  if (typeof input.baseline_revalidates_after_enrichment !== "boolean") {
+    errors.push("real_data.baseline_revalidates_after_enrichment must be true or false.");
+  }
+  const assessed = input.improved_assessed;
+  if (!isRecord(assessed) || !isCount(assessed.valid) || !isCount(assessed.flagged)) {
+    errors.push("real_data.improved_assessed must have non-negative integer valid and flagged counts.");
+  }
+  const cost = input.provider_cost_usd_measured_per_run;
+  if (!(typeof cost === "number" && Number.isFinite(cost) && cost >= 0)) {
+    errors.push("real_data.provider_cost_usd_measured_per_run must be a non-negative number.");
+  }
+
+  if (errors.length > 0 || !search || !after) return { state: "invalid", errors };
+  const source = input.source as string;
+  const lower = source.toLowerCase();
+  return {
+    state: "ready",
+    data: {
+      source,
+      slice: input.slice as string,
+      searched: input.searched as number,
+      enriched_in_both_pipelines: input.enriched_in_both_pipelines as number,
+      search_stage_validation: search,
+      after_enrichment_validation: after,
+      valid_to_flagged: (changed as Record<string, number>).valid_to_flagged,
+      rules_fired: rules,
+      baseline_revalidates_after_enrichment: input.baseline_revalidates_after_enrichment as boolean,
+      improved_assessed: {
+        valid: (assessed as Record<string, number>).valid,
+        flagged: (assessed as Record<string, number>).flagged,
+      },
+      provider_cost_usd_measured_per_run: cost as number,
+      caveat: input.caveat as string,
+      source_states_no_real_model:
+        lower.includes("fake model") && lower.includes("no model calls") && lower.includes("tracing off"),
+    },
+  };
+}
+
 export function parseEvidenceSummary(input: unknown): EvidenceState {
   if (!isRecord(input)) {
     return { state: "invalid", errors: ["The evidence summary must be a JSON object."] };
@@ -129,6 +256,6 @@ export function parseEvidenceSummary(input: unknown): EvidenceState {
       improved,
       notes: [...(input.notes as string[])],
     },
-    live_data: input.real_data === null ? { state: "pending" } : { state: "unsupported" },
+    live_data: parseLiveData(input.real_data),
   };
 }

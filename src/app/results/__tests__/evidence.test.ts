@@ -46,19 +46,26 @@ describe("parseEvidenceSummary with the official file", () => {
     }
   });
 
-  it("marks the null real_data as a pending live-data evaluation", () => {
-    expect(summary.real_data).toBeNull();
-    expect(result.live_data).toEqual({ state: "pending" });
+  it("parses the official live-data evaluation", () => {
+    expect(result.live_data.state).toBe("ready");
   });
 });
 
 describe("parseEvidenceSummary with other input", () => {
-  it("acknowledges non-null real_data without exposing any of it", () => {
-    const input = { ...clone(), real_data: { baseline: { assessed: 99 } } };
-    const result = parseEvidenceSummary(input);
+  it("marks null real_data as a pending live-data evaluation", () => {
+    const result = parseEvidenceSummary({ ...clone(), real_data: null });
     if (result.state !== "ready") throw new Error("expected ready");
-    expect(result.live_data).toEqual({ state: "unsupported" });
-    expect(JSON.stringify(result)).not.toContain("99");
+    expect(result.live_data).toEqual({ state: "pending" });
+  });
+
+  it("rejects malformed live data as a whole, keeping the fixture summary", () => {
+    const result = parseEvidenceSummary({ ...clone(), real_data: { baseline: { assessed: 99 } } });
+    if (result.state !== "ready") throw new Error("expected ready");
+    expect(result.live_data.state).toBe("invalid");
+    expect(result.live_data).not.toHaveProperty("data");
+    const official = parseEvidenceSummary(summary);
+    if (official.state !== "ready") throw new Error("expected ready");
+    expect(result.summary).toEqual(official.summary);
   });
 
   it("ignores unknown fields", () => {

@@ -80,18 +80,19 @@ describe("OfficialEvidencePanel", () => {
 
 describe("LiveDataPanel", () => {
   it("shows a pending live-data evaluation with no figures while real_data is null", () => {
-    const out = text(html(<LiveDataPanel state={official} />));
+    const out = text(html(<LiveDataPanel state={parseEvidenceSummary({ ...summary, real_data: null })} />));
     expect(out).toContain("Pending");
     expect(out).toContain("has not been published");
     expect(out).toContain("not a substitute");
     expect(out).not.toMatch(/\d/);
   });
 
-  it("shows no figures even when real_data is present", () => {
-    const withData = parseEvidenceSummary({ ...summary, real_data: { improved: { assessed: 7 } } });
-    const out = text(html(<LiveDataPanel state={withData} />));
-    expect(out).toContain("does not display them yet");
-    expect(out).not.toMatch(/\d/);
+  it("shows no figures when real_data is malformed", () => {
+    const malformed = parseEvidenceSummary({ ...summary, real_data: { improved: { assessed: 7 } } });
+    const out = text(html(<LiveDataPanel state={malformed} />));
+    expect(out).toContain("Invalid live-data evidence");
+    expect(out).not.toContain("<table");
+    expect(out).not.toContain("Searched");
   });
 });
 
