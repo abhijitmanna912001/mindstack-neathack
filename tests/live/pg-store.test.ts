@@ -42,11 +42,11 @@ const NOW = new Date("2026-01-01T00:00:30Z");
 describe("PgLiveStore.reserveRun", () => {
   it("issues one atomic UPDATE then an INSERT in a transaction", async () => {
     const { db, calls, events } = fakeDb([
-      { rows: [{ id: "code-1", remaining: 4 }] },
+      { rows: [{ id: "code-1", mode: "live", remaining: 4 }] },
       { rows: [{ id: "run-1" }] },
     ]);
     const r = await new PgLiveStore(db).reserveRun("HASH", NOW, 120);
-    expect(r).toEqual({ ok: true, runId: "run-1", runsRemaining: 4 });
+    expect(r).toEqual({ ok: true, runId: "run-1", runsRemaining: 4, mode: "live" });
     expect(events).toEqual(["begin", "commit"]);
     expect(calls).toHaveLength(2);
     const upd = calls[0].text;
@@ -54,7 +54,7 @@ describe("PgLiveStore.reserveRun", () => {
     expect(upd).toContain("WHERE code_hash = $1 AND NOT disabled");
     expect(upd).toContain("runs_used < max_runs");
     expect(upd).toContain("locked_until IS NULL OR locked_until <=");
-    expect(upd).toContain("RETURNING id, max_runs - runs_used AS remaining");
+    expect(upd).toContain("RETURNING id, mode, max_runs - runs_used AS remaining");
     expect(calls[0].params).toEqual(["HASH", NOW.toISOString(), 120]);
     expect(calls[1].text).toMatch(/^INSERT INTO live_runs/);
     expect(calls[1].params).toEqual(["code-1", NOW.toISOString()]);
@@ -71,6 +71,30 @@ describe("PgLiveStore.reserveRun", () => {
     expect(r).toEqual({ ok: false, reason });
     expect(calls).toHaveLength(2);
     expect(calls[1].text).toMatch(/^SELECT/);
+  });
+});
+
+describe("PgLiveStore modes", () => {
+  it("passes mode as a parameter on create and set-mode, and lists it", async () => {
+    const { db, calls } = fakeDb([
+      { rows: [{ id: "x" }] },
+      { rows: [{ id: "x" }] },
+      { rows: [{ label: "a", max_runs: 1, runs_used: 0, disabled: false, mode: "live" }] },
+    ]);
+    const s = new PgLiveStore(db);
+    await s.admin.createCode("a", 1, "h", "live");
+    await s.admin.setMode("a", "synthetic");
+    expect(await s.admin.listCodes()).toEqual([
+      { label: "a", maxRuns: 1, runsUsed: 0, disabled: false, mode: "live" },
+    ]);
+    expect(calls[0].params).toEqual(["a", 1, "h", "live"]);
+    expect(calls[1].params).toEqual(["a", "synthetic"]);
+  });
+
+  it("defaults create to synthetic", async () => {
+    const { db, calls } = fakeDb([{ rows: [{ id: "x" }] }]);
+    await new PgLiveStore(db).admin.createCode("a", 1, "h");
+    expect(calls[0].params).toEqual(["a", 1, "h", "synthetic"]);
   });
 });
 
@@ -113,6 +137,7 @@ describe("PgLiveStore SQL hygiene", () => {
       { rows: [{ id: "x" }] },
       { rows: [{ id: "x" }] },
       { rows: [{ id: "x" }] },
+      { rows: [{ id: "x" }] },
     ]);
     const s = new PgLiveStore(db);
     await s.isLiveEnabled();
@@ -133,6 +158,7 @@ describe("PgLiveStore SQL hygiene", () => {
     await s.admin.disableCode(evil);
     await s.admin.enableCode(evil);
     await s.admin.addRuns(evil, 1);
+    await s.admin.setMode(evil, "live");
     expect(r.ok).toBe(true);
     expect(calls.length).toBeGreaterThan(10);
     for (const c of calls) {
@@ -165,6 +191,7 @@ describe("PgLiveStore failure handling", () => {
       (s) => s.admin.disableCode("l"),
       (s) => s.admin.enableCode("l"),
       (s) => s.admin.addRuns("l", 1),
+      (s) => s.admin.setMode("l", "live"),
     ];
     for (const call of calls) {
       const { db } = fakeDb([boom, boom, boom]);

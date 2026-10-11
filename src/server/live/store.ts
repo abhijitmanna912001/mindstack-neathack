@@ -9,6 +9,8 @@ export class LiveStoreUnavailable extends Error {
   }
 }
 
+export type CodeMode = "synthetic" | "live";
+
 export type ReserveFailure =
   | "invalid_code"
   | "disabled"
@@ -16,7 +18,7 @@ export type ReserveFailure =
   | "run_in_progress";
 
 export type ReserveResult =
-  | { ok: true; runId: string; runsRemaining: number }
+  | { ok: true; runId: string; runsRemaining: number; mode: CodeMode }
   | { ok: false; reason: ReserveFailure };
 
 export interface RunOutcome {
@@ -39,16 +41,23 @@ export interface CodeSummary {
   maxRuns: number;
   runsUsed: number;
   disabled: boolean;
+  mode: CodeMode;
 }
 
 export interface LiveAdmin {
   // false when the label (or hash) already exists.
-  createCode(label: string, maxRuns: number, codeHash: string): Promise<boolean>;
+  createCode(
+    label: string,
+    maxRuns: number,
+    codeHash: string,
+    mode?: CodeMode,
+  ): Promise<boolean>;
   listCodes(): Promise<CodeSummary[]>;
   // The three below return false when no code has that label.
   disableCode(label: string): Promise<boolean>;
   enableCode(label: string): Promise<boolean>;
   addRuns(label: string, n: number): Promise<boolean>;
+  setMode(label: string, mode: CodeMode): Promise<boolean>;
 }
 
 export interface LiveStore {

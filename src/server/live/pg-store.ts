@@ -4,6 +4,7 @@
 
 import {
   LiveStoreUnavailable,
+  type CodeMode,
   type CodeSummary,
   type HitResult,
   type LiveStore,
@@ -32,7 +33,7 @@ const SQL = {
     "last_used_at = $2::timestamptz " +
     "WHERE code_hash = $1 AND NOT disabled AND runs_used < max_runs " +
     "AND (locked_until IS NULL OR locked_until <= $2::timestamptz) " +
-    "RETURNING id, max_runs - runs_used AS remaining",
+    "RETURNING id, mode, max_runs - runs_used AS remaining",
   reserveReason:
     "SELECT disabled, runs_used >= max_runs AS exhausted FROM invite_codes " +
     "WHERE code_hash = $1",
@@ -56,14 +57,15 @@ const SQL = {
     "ON CONFLICT (bucket, window_start) DO UPDATE SET count = rate_hits.count + 1 " +
     "RETURNING count",
   createCode:
-    "INSERT INTO invite_codes (label, max_runs, code_hash) VALUES ($1, $2, $3) " +
+    "INSERT INTO invite_codes (label, max_runs, code_hash, mode) VALUES ($1, $2, $3, $4) " +
     "ON CONFLICT DO NOTHING RETURNING id",
   listCodes:
-    "SELECT label, max_runs, runs_used, disabled FROM invite_codes ORDER BY created_at, label",
+    "SELECT label, max_runs, runs_used, disabled, mode FROM invite_codes ORDER BY created_at, label",
   setDisabled:
     "UPDATE invite_codes SET disabled = $2 WHERE label = $1 RETURNING id",
   addRuns:
     "UPDATE invite_codes SET max_runs = max_runs + $2 WHERE label = $1 RETURNING id",
+  setMode: "UPDATE invite_codes SET mode = $2 WHERE label = $1 RETURNING id",
 } as const;
 
 async function guard<T>(fn: () => Promise<T>): Promise<T> {
@@ -107,12 +109,13 @@ export class PgLiveStore implements LiveStore {
           if (row.exhausted) return { ok: false, reason: "no_runs_left" };
           return { ok: false, reason: "run_in_progress" };
         }
-        const { id, remaining } = upd.rows[0];
+        const { id, remaining, mode } = upd.rows[0];
         const ins = await tx.query(SQL.insertRun, [id, iso]);
         return {
           ok: true,
           runId: String(ins.rows[0].id),
           runsRemaining: Number(remaining),
+          mode: mode as CodeMode,
         };
       }),
     );
@@ -165,12 +168,13 @@ export class PgLiveStore implements LiveStore {
   }
 
   readonly admin: LiveStore["admin"] = {
-    createCode: (label, maxRuns, codeHash) =>
+    createCode: (label, maxRuns, codeHash, mode = "synthetic") =>
       guard(async () => {
         const { rows } = await this.db.query(SQL.createCode, [
           label,
           maxRuns,
           codeHash,
+          mode,
         ]);
         return rows.length > 0;
       }),
@@ -182,6 +186,7 @@ export class PgLiveStore implements LiveStore {
           maxRuns: Number(r.max_runs),
           runsUsed: Number(r.runs_used),
           disabled: Boolean(r.disabled),
+          mode: r.mode as CodeMode,
         }));
       }),
     disableCode: (label) =>
@@ -197,6 +202,11 @@ export class PgLiveStore implements LiveStore {
     addRuns: (label, n) =>
       guard(async () => {
         const { rows } = await this.db.query(SQL.addRuns, [label, n]);
+        return rows.length > 0;
+      }),
+    setMode: (label, mode) =>
+      guard(async () => {
+        const { rows } = await this.db.query(SQL.setMode, [label, mode]);
         return rows.length > 0;
       }),
   };

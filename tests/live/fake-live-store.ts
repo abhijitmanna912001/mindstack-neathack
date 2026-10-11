@@ -1,6 +1,7 @@
 // In-memory LiveStore used by the contract suite (no database).
 
 import type {
+  CodeMode,
   CodeSummary,
   HitResult,
   LiveStore,
@@ -15,6 +16,7 @@ interface Code {
   maxRuns: number;
   runsUsed: number;
   disabled: boolean;
+  mode: CodeMode;
   lockedUntil: number | null;
 }
 interface Run {
@@ -53,7 +55,7 @@ export class FakeLiveStore implements LiveStore {
     c.lockedUntil = now.getTime() + lockSeconds * 1000;
     const runId = `run-${++this.seq}`;
     this.runs.set(runId, { codeId: c.id, status: "started" });
-    return { ok: true, runId, runsRemaining: c.maxRuns - c.runsUsed };
+    return { ok: true, runId, runsRemaining: c.maxRuns - c.runsUsed, mode: c.mode };
   }
 
   async finishRun(runId: string, outcome: RunOutcome) {
@@ -96,7 +98,12 @@ export class FakeLiveStore implements LiveStore {
   }
 
   readonly admin = {
-    createCode: async (label: string, maxRuns: number, codeHash: string) => {
+    createCode: async (
+      label: string,
+      maxRuns: number,
+      codeHash: string,
+      mode: CodeMode = "synthetic",
+    ) => {
       if (this.codes.some((c) => c.label === label || c.hash === codeHash)) {
         return false;
       }
@@ -107,6 +114,7 @@ export class FakeLiveStore implements LiveStore {
         maxRuns,
         runsUsed: 0,
         disabled: false,
+        mode,
         lockedUntil: null,
       });
       return true;
@@ -117,6 +125,7 @@ export class FakeLiveStore implements LiveStore {
         maxRuns: c.maxRuns,
         runsUsed: c.runsUsed,
         disabled: c.disabled,
+        mode: c.mode,
       })),
     disableCode: async (label: string) => {
       const c = this.byLabel(label);
@@ -126,6 +135,11 @@ export class FakeLiveStore implements LiveStore {
     enableCode: async (label: string) => {
       const c = this.byLabel(label);
       if (c) c.disabled = false;
+      return !!c;
+    },
+    setMode: async (label: string, mode: CodeMode) => {
+      const c = this.byLabel(label);
+      if (c) c.mode = mode;
       return !!c;
     },
     addRuns: async (label: string, n: number) => {

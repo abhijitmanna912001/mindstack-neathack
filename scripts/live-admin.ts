@@ -5,14 +5,15 @@
 import { pathToFileURL } from "node:url";
 import { generateInviteCode, hashCode } from "../src/server/live/codes";
 import { connectPgStore } from "../src/server/live/pg-store";
-import type { LiveStore } from "../src/server/live/store";
+import type { CodeMode, LiveStore } from "../src/server/live/store";
 
 export const EXIT_OK = 0;
 export const EXIT_FAILED = 1;
 export const EXIT_USAGE = 2;
 
 const USAGE = `usage:
-  live-admin create --label X --runs N
+  live-admin create --label X --runs N [--mode synthetic|live]
+  live-admin set-mode --label X --mode synthetic|live
   live-admin list
   live-admin disable --label X
   live-admin enable --label X
@@ -20,7 +21,8 @@ const USAGE = `usage:
   live-admin kill-switch on|off|status`;
 
 export type AdminCommand =
-  | { kind: "create"; label: string; runs: number }
+  | { kind: "create"; label: string; runs: number; mode: CodeMode }
+  | { kind: "set-mode"; label: string; mode: CodeMode }
   | { kind: "list" }
   | { kind: "disable"; label: string }
   | { kind: "enable"; label: string }
@@ -29,18 +31,27 @@ export type AdminCommand =
 
 class UsageError extends Error {}
 
-function flags(args: string[], names: string[]): Record<string, string> {
+function flags(
+  args: string[],
+  names: string[],
+  optional: string[] = [],
+): Record<string, string> {
   const out: Record<string, string> = {};
   for (let i = 0; i < args.length; i += 2) {
     const name = args[i]?.replace(/^--/, "");
     const value = args[i + 1];
-    if (!args[i]?.startsWith("--") || !names.includes(name) || !value) {
+    if (!args[i]?.startsWith("--") || !(names.includes(name) || optional.includes(name)) || !value) {
       throw new UsageError("bad flags");
     }
     out[name] = value;
   }
   if (names.some((n) => !(n in out))) throw new UsageError("missing flag");
   return out;
+}
+
+function mode(text: string): CodeMode {
+  if (text !== "synthetic" && text !== "live") throw new UsageError("bad mode");
+  return text;
 }
 
 function count(text: string, min: number): number {
@@ -52,8 +63,17 @@ export function parseAdminArgs(argv: string[]): AdminCommand {
   const [cmd, ...rest] = argv;
   switch (cmd) {
     case "create": {
-      const f = flags(rest, ["label", "runs"]);
-      return { kind: "create", label: f.label, runs: count(f.runs, 0) };
+      const f = flags(rest, ["label", "runs"], ["mode"]);
+      return {
+        kind: "create",
+        label: f.label,
+        runs: count(f.runs, 0),
+        mode: mode(f.mode ?? "synthetic"),
+      };
+    }
+    case "set-mode": {
+      const f = flags(rest, ["label", "mode"]);
+      return { kind: "set-mode", label: f.label, mode: mode(f.mode) };
     }
     case "list":
       if (rest.length) throw new UsageError("unexpected args");
@@ -88,18 +108,22 @@ async function execute(
   switch (cmd.kind) {
     case "create": {
       const code = generateInviteCode();
-      if (!(await store.admin.createCode(cmd.label, cmd.runs, hashCode(code, secret)))) {
+      if (!(await store.admin.createCode(cmd.label, cmd.runs, hashCode(code, secret), cmd.mode))) {
         out(`label "${cmd.label}" already exists`);
         return EXIT_FAILED;
       }
-      out(`created "${cmd.label}" with ${cmd.runs} runs`);
+      out(`created "${cmd.label}" with ${cmd.runs} runs (${cmd.mode})`);
       out(`code (shown once, store it now): ${code}`);
       return EXIT_OK;
     }
+    case "set-mode":
+      if (!(await store.admin.setMode(cmd.label, cmd.mode))) return missing(cmd.label);
+      out(`"${cmd.label}" is now ${cmd.mode}`);
+      return EXIT_OK;
     case "list": {
       for (const c of await store.admin.listCodes()) {
         out(
-          `${c.label}\t${c.runsUsed}/${c.maxRuns} used\t${c.disabled ? "disabled" : "enabled"}`,
+          `${c.label}\t${c.mode}\t${c.runsUsed}/${c.maxRuns} used\t${c.disabled ? "disabled" : "enabled"}`,
         );
       }
       return EXIT_OK;

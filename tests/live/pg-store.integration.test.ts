@@ -110,6 +110,18 @@ suite("PgLiveStore against real Postgres", () => {
     });
   });
 
+  it("defaults to synthetic, returns mode on reserve, and set-mode works", async () => {
+    await store.admin.createCode("modey", 3, "modey-hash");
+    expect(await store.reserveRun("modey-hash", T0, 60)).toMatchObject({ ok: true, mode: "synthetic" });
+    expect(await store.admin.setMode("modey", "live")).toBe(true);
+    expect(await store.reserveRun("modey-hash", new Date(T0.getTime() + 61_000), 60))
+      .toMatchObject({ ok: true, mode: "live" });
+    await store.admin.createCode("livecode", 1, "livecode-hash", "live");
+    const listed = await store.admin.listCodes();
+    expect(listed.find((c) => c.label === "livecode")?.mode).toBe("live");
+    await expect(run("UPDATE invite_codes SET mode = 'bogus' WHERE label = 'modey'")).rejects.toThrow();
+  });
+
   it("gives a run back on releaseRun", async () => {
     await store.admin.createCode("rel", 1, "rel-hash");
     const r = await store.reserveRun("rel-hash", T0, 60);

@@ -6,12 +6,17 @@ CREATE TABLE IF NOT EXISTS invite_codes (
   code_hash text UNIQUE NOT NULL,
   label text UNIQUE NOT NULL,
   max_runs int NOT NULL CHECK (max_runs >= 0),
+  mode text NOT NULL DEFAULT 'synthetic' CHECK (mode IN ('synthetic', 'live')),
   runs_used int NOT NULL DEFAULT 0,
   disabled boolean NOT NULL DEFAULT false,
   locked_until timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   last_used_at timestamptz
 );
+
+-- Upgrade path for tables created before the per-code mode existed.
+ALTER TABLE invite_codes ADD COLUMN IF NOT EXISTS mode text NOT NULL DEFAULT 'synthetic'
+  CHECK (mode IN ('synthetic', 'live'));
 
 CREATE TABLE IF NOT EXISTS live_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

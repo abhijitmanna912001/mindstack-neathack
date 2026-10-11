@@ -18,7 +18,7 @@ function contract(name: string, make: () => LiveStore) {
     beforeEach(async () => {
       store = make();
       await store.admin.createCode("alice", 2, "hash-a");
-      await store.admin.createCode("bob", 0, "hash-b");
+      await store.admin.createCode("bob", 0, "hash-b", "live");
     });
 
     it("has the kill switch OFF by default and toggles", async () => {
@@ -115,10 +115,17 @@ function contract(name: string, make: () => LiveStore) {
       expect(await store.admin.createCode("alice", 9, "hash-z")).toBe(false);
       const list = await store.admin.listCodes();
       expect(list).toEqual([
-        { label: "alice", maxRuns: 2, runsUsed: 0, disabled: false },
-        { label: "bob", maxRuns: 0, runsUsed: 0, disabled: false },
+        { label: "alice", maxRuns: 2, runsUsed: 0, disabled: false, mode: "synthetic" },
+        { label: "bob", maxRuns: 0, runsUsed: 0, disabled: false, mode: "live" },
       ]);
       expect(JSON.stringify(list)).not.toContain("hash-");
+    });
+
+    it("defaults to synthetic, reports mode on reserve, and set-mode changes it", async () => {
+      expect(await store.reserveRun("hash-a", T0, 60)).toMatchObject({ ok: true, mode: "synthetic" });
+      expect(await store.admin.setMode("alice", "live")).toBe(true);
+      expect(await store.reserveRun("hash-a", after(61), 60)).toMatchObject({ ok: true, mode: "live" });
+      expect(await store.admin.setMode("ghost", "live")).toBe(false);
     });
 
     it("counts hits in fixed windows", async () => {
