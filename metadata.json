@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4P03M06EB73B1X736WDZPQY",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "src/server/live/config.ts",
+    "src/server/live/run-live.ts",
+    "src/server/live/validate.ts",
+    "tests/live/pg-store.integration.test.ts",
+    "tests/live/run-live.test.ts",
+    "tests/live/validate.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 48,
+    "cache_creation_tokens": 102763,
+    "cache_read_tokens": 2262394,
+    "output_tokens": 32387,
+    "api_call_count": 24
+  }
+}
