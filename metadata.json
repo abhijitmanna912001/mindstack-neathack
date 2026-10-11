@@ -3,8 +3,9 @@
   "checkpoint_id": "01M4MYZSX9HAZ028P0X9C8Y7QH",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 3,
   "files_touched": [
+    "scripts/crustdata-smoke.ts",
     "src/core/data/crustdata-provider.ts",
     "tests/crustdata-provider.test.ts"
   ],
@@ -15,13 +16,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 8,
-    "cache_creation_tokens": 34685,
-    "cache_read_tokens": 186395,
-    "output_tokens": 2346,
-    "api_call_count": 4
+    "input_tokens": 32,
+    "cache_creation_tokens": 92399,
+    "cache_read_tokens": 990230,
+    "output_tokens": 23460,
+    "api_call_count": 16
   }
 }
