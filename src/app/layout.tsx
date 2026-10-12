@@ -36,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <p className="mx-auto w-full max-w-page px-4 py-4 text-xs text-slate-600 sm:px-6 lg:px-8 dark:text-slate-300">
             SignalScout AI, neatHack 2026 prototype. Demo pages use synthetic
             data. Live Crustdata runs are invite only and switched off by
-            default.
+            default. Company data in live runs is provided by Crustdata.
           </p>
         </footer>
       </body>

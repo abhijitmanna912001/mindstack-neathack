@@ -3,6 +3,10 @@ import { StatTile } from "../../_components/results/StatTile";
 import type { EvidenceState, LiveDataEvidence, ValidationCounts } from "../_lib/evidence";
 import { Badge } from "./Badge";
 
+// The counts come from evidence/summary.json; the page never queries Crustdata.
+export const SAVED_COUNTS_NOTE =
+  "These are saved counts from an earlier live-data evaluation. This page does not run a live Crustdata query.";
+
 const STATUSES = ["valid", "flagged", "rejected"] as const satisfies readonly (keyof ValidationCounts)[];
 const STATUS_LABELS: Record<keyof ValidationCounts, string> = {
   valid: "Valid",
@@ -48,6 +52,7 @@ function Ready({ data }: { data: LiveDataEvidence }) {
       description="Baseline versus improved on live provider data, as counts from the official evidence summary."
       badge={<Badge tone="info">Official live-data counts</Badge>}
     >
+      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{SAVED_COUNTS_NOTE}</p>
       <dl className="grid gap-2 rounded-lg bg-slate-50 p-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)] dark:bg-slate-800/50">
         <dt className="font-medium text-slate-700 dark:text-slate-200">Data source</dt>
         <dd className="text-slate-900 dark:text-slate-100">{data.source}</dd>

@@ -8,11 +8,18 @@ import { describe, expect, it } from "vitest";
 import summary from "../../../../evidence/summary.json";
 import { DemoNotice } from "../_components/DemoNotice";
 import { LiveDataPanel } from "../_components/LiveDataPanel";
-import { ModeRejected } from "../_components/ModeRejected";
+import { LIVE_BETA_POINTER, ModeRejected } from "../_components/ModeRejected";
 import { OfficialEvidencePanel } from "../_components/OfficialEvidencePanel";
 import { parseEvidenceSummary } from "../_lib/evidence";
 import { DEMO_UNSUPPORTED_NUMBER_COMPANY_ID } from "../_lib/guardrail-demo";
-import { UNSUPPORTED_MODE_REASON } from "../_lib/mode";
+import { parseRequestedMode, UNSUPPORTED_MODE_REASON } from "../_lib/mode";
+
+// The reason the page shows for ?mode=<value>.
+function parseRequestedModeReason(value: unknown): string {
+  const check = parseRequestedMode(value);
+  if (check.ok) throw new Error(`expected ${value} to be rejected`);
+  return check.reason;
+}
 
 const html = (node: ReactElement) => renderToStaticMarkup(node);
 // Visible text only, with HTML entities decoded for the few React escapes.
@@ -116,7 +123,37 @@ describe("ModeRejected", () => {
   it("explains the rejection and that nothing ran", () => {
     const out = html(<ModeRejected reason={UNSUPPORTED_MODE_REASON} />);
     expect(out).toContain("Mode not supported");
-    expect(out).toContain("No pipeline was run");
-    expect(out).toContain('href="/results"');
+    expect(out).toContain("No pipeline was run and no provider or model was contacted.");
+    expect(out).toMatch(/<a[^>]*href="\/results"[^>]*>View the synthetic results instead<\/a>/);
+  });
+
+  it("says mode=live does not start a live run and points to the Live beta", () => {
+    const out = text(html(<ModeRejected reason={parseRequestedModeReason("live")} />));
+    expect(out).toContain(
+      "Only synthetic mode is available on this page. The mode=live parameter does not start a live run. For the invite-only workflow, visit the Live beta page.",
+    );
+    expect(LIVE_BETA_POINTER).toBe("For the invite-only workflow, visit the Live beta page.");
+    expect(html(<ModeRejected reason={UNSUPPORTED_MODE_REASON} />)).toMatch(
+      /<a[^>]*href="\/live"[^>]*>Open the invite-only Live beta<\/a>/,
+    );
+    expect(out).not.toContain("not supported by the web app");
+  });
+
+  it.each([["invalid"], [""], ["crustdata"]])("gives an accurate message for mode=%j, without the mode=live claim", (value) => {
+    const markup = html(<ModeRejected reason={parseRequestedModeReason(value)} />);
+    const out = text(markup);
+    expect(out).toContain(
+      "Only synthetic mode is available on this page. The requested mode is not supported. For the invite-only workflow, visit the Live beta page.",
+    );
+    expect(out).not.toContain("mode=live");
+    expect(out).toContain("No pipeline was run and no provider or model was contacted.");
+    expect(markup).toMatch(/<a[^>]*href="\/results"[^>]*>View the synthetic results instead<\/a>/);
+    expect(markup).toMatch(/<a[^>]*href="\/live"[^>]*>Open the invite-only Live beta<\/a>/);
+  });
+
+  it("gives the general message for a repeated mode parameter", () => {
+    const check = parseRequestedMode(["live", "live"]);
+    expect(check.ok).toBe(false);
+    if (!check.ok) expect(text(html(<ModeRejected reason={check.reason} />))).not.toContain("mode=live");
   });
 });

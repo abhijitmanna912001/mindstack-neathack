@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import summary from "../../../../evidence/summary.json";
 import { DemoNotice } from "../_components/DemoNotice";
-import { LiveDataPanel } from "../_components/LiveDataPanel";
+import { LiveDataPanel, SAVED_COUNTS_NOTE } from "../_components/LiveDataPanel";
 import { OfficialEvidencePanel } from "../_components/OfficialEvidencePanel";
 import { parseEvidenceSummary, parseLiveData } from "../_lib/evidence";
 import { DEMO_UNSUPPORTED_NUMBER_COMPANY_ID } from "../_lib/guardrail-demo";
@@ -96,6 +96,16 @@ describe("LiveDataPanel with the official real_data", () => {
   const state = parseEvidenceSummary(summary);
   const html = markup(<LiveDataPanel state={state} />);
   const out = text(html);
+
+  it("says these are saved counts and that the page runs no live Crustdata query", () => {
+    expect(SAVED_COUNTS_NOTE).toBe(
+      "These are saved counts from an earlier live-data evaluation. This page does not run a live Crustdata query.",
+    );
+    expect(out).toContain(SAVED_COUNTS_NOTE);
+    // Next to the description of the official evidence-summary counts.
+    expect(out.indexOf("as counts from the official evidence summary")).toBeLessThan(out.indexOf(SAVED_COUNTS_NOTE));
+    expect(out.indexOf(SAVED_COUNTS_NOTE)).toBeLessThan(out.indexOf("Data source"));
+  });
 
   it("renders the source, slice and every published count", () => {
     expect(out).toContain(live.source);
