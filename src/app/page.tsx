@@ -13,6 +13,11 @@ export default function Home() {
           evidence behind each score, budget usage and draft outreach in one
           place.
         </p>
+        <p className="text-sm leading-6 text-slate-600 sm:text-base dark:text-slate-300">
+          This page records a profile only. To run the pipeline, use the
+          invite-only live beta with an invitation code; saved evidence from
+          earlier runs is on the results page.
+        </p>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
           <Link
             href="/results"

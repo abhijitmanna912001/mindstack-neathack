@@ -3,6 +3,8 @@ type DataModeSelectorProps = {
   error?: string;
 };
 
+export const SYNTHETIC_DATA_DESCRIPTION = "Synthetic data: no API calls and no credits spent.";
+
 export const LIVE_CRUSTDATA_HELPER =
   "Live runs are invite only and run on the Live beta page. They are switched off by default.";
 
@@ -32,7 +34,7 @@ export function DataModeSelector({ defaultValue, error }: DataModeSelectorProps)
             Synthetic data
           </span>
           <span className="text-xs text-slate-600 dark:text-slate-300">
-            Generated demo companies. No API calls and no credits spent.
+            {SYNTHETIC_DATA_DESCRIPTION}
           </span>
         </span>
       </label>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { IcpDraft } from "../../_lib/icp-form";
 import { BudgetUsagePlaceholder } from "./BudgetUsagePlaceholder";
 import { EvidencePlaceholder } from "./EvidencePlaceholder";
@@ -6,6 +7,9 @@ import { OutreachDraftsPlaceholder } from "./OutreachDraftsPlaceholder";
 import { Panel } from "./Panel";
 import { ProspectScoresPlaceholder } from "./ProspectScoresPlaceholder";
 import { StatTile } from "./StatTile";
+
+const LINK_CLASS =
+  "font-semibold text-indigo-700 underline underline-offset-4 hover:text-indigo-600 dark:text-indigo-300";
 
 type ResultsPanelProps = {
   icp: IcpDraft | null;
@@ -17,10 +21,19 @@ function RunStatus({ icp, pending }: ResultsPanelProps) {
     return <>Checking your profile…</>;
   }
   if (icp) {
+    // This page only records the profile; it never runs the pipeline.
     return (
       <>
-        Profile accepted. The prospecting pipeline is not connected yet, so no
-        results are generated.
+        Profile accepted. This page does not run the pipeline, so no results
+        are generated here. Run it on the{" "}
+        <Link href="/live" className={LINK_CLASS}>
+          Live beta page
+        </Link>{" "}
+        with an invitation code, or see the saved evidence on the{" "}
+        <Link href="/results" className={LINK_CLASS}>
+          Results page
+        </Link>
+        .
       </>
     );
   }
