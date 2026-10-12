@@ -1,3 +1,5 @@
+import { HeaderBadge } from "./HeaderBadge";
+
 export function AppHeader() {
   return (
     <header className="border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
@@ -26,10 +28,7 @@ export function AppHeader() {
             </span>
           </div>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/30">
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-emerald-500" />
-          Synthetic data mode
-        </span>
+        <HeaderBadge />
       </div>
     </header>
   );
