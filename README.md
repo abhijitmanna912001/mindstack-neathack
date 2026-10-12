@@ -212,7 +212,7 @@ Only synthetic mode is supported. Any other mode, for example `?mode=live`, is r
 
 ## Live beta (invite-only)
 
-The page at `/live` takes an invite code and a small ICP form, and runs the improved pipeline for that code. The server routes are `POST /api/live/run` (a run) and `GET /api/live/status` (whether live mode is switched on).
+The page at `/live` takes an invite code and a small ICP form, and runs the improved pipeline for that code. The server routes are `POST /api/live/run` (a run) and `GET /api/live/status` (whether live mode is switched on). The application has no export or download feature, shows at most 10 companies per run, and each code has a run cap (`max_runs`) set when it is created with `--runs <n>`; the admin script can raise it with `add-runs`.
 
 ### Status
 
@@ -222,10 +222,10 @@ This paragraph is the one place to edit when the facts change.
 - Production now has the live variables configured (`CRUSTDATA_LIVE_API_KEY`, `LIVE_LLM_API_KEY`, `LIVE_LLM_BASE_URL`, `LIVE_LLM_MODEL`).
 - Live mode stays off by default through the kill switch. It is switched on only for a builder-run test.
 - After the first verified live run (below), every test code was disabled and the kill switch is off, so live mode is armed but closed.
-- Only builder-only live codes can run live mode. None is enabled at the time of writing.
-- Outsiders and judges get synthetic mode only.
-- Third-party display of Crustdata records still waits for Crustdata's written confirmation.
-- No company data from live runs is shown publicly. Demo evidence for live runs is limited to counts, costs and usage-page reconciliation.
+- Live codes may be issued by the builders to invited testers, including judges, on request. The public demo code is synthetic. Live mode stays off by default and no live code is enabled at the time of writing.
+- On 12 October 2026 we asked the Crustdata team whether our use is permitted: an invite-only demo app that runs company search and enrichment through their API with our own key and shows results to a handful of invited testers (hackathon judges and people we choose), with results shown in the invited user's browser for the session only, only run counts and costs kept, and a question whether attribution or field restrictions apply. The Crustdata team replied the same day that this is fine and that the only thing they prohibit is downloading their data as-is and bulk-selling it as a dataset. The reply is an informal message, not a signed agreement.
+- Our first question did not mention that company facts are sent to a third-party model provider inside the assessment prompts, nor a public demo video. We sent a follow-up about both. On 12 October 2026 the Crustdata team replied the same afternoon that this flow is fine, including the model provider and a public demo video, and asked us to include an attribution line. We proposed the wording "Company data provided by Crustdata." and they accepted it. The live page shows, or will show, that line wherever live results are displayed and in its footer. Like the first reply, this is an informal message, not a signed agreement.
+- Company data from live runs appears only in the invited user's browser and, briefly, in the builders' demo video; the repository, the evidence files and the traces contain none.
 
 ### First verified live run
 
@@ -257,7 +257,7 @@ On 12 October 2026, around midday IST, one live run was made on the deployed sit
 Each invite code is bound to one mode, set by whoever creates it (default `synthetic`).
 
 - **synthetic.** Fixture companies and a fake model. The search criteria you enter are ignored (the response says so), and nothing is spent. One outreach draft deliberately contains an injected unsupported number so the claim check can be seen suppressing it.
-- **live.** Real Crustdata data and a real model (`claude-haiku-4-5-20251001` through Anthropic's OpenAI-compatible endpoint in the first verified run), for the builders only. A live run searches up to 10 companies, enriches up to 5, and allows up to 20 model calls and 1500 output tokens per call. The search is sorted by company id ascending. The industry you type is matched to the first autocomplete suggestion from Crustdata, and the response says which industry was searched.
+- **live.** Real Crustdata data and a real model (`claude-haiku-4-5-20251001` through Anthropic's OpenAI-compatible endpoint in the first verified run). Live mode runs real Crustdata search and enrichment and a real model; live codes are issued by the builders to invited testers on request, and none is enabled at the time of writing. A live run searches up to 10 companies, enriches up to 5, and allows up to 20 model calls and 1500 output tokens per call. The search is sorted by company id ascending. The industry you type is matched to the first autocomplete suggestion from Crustdata, and the response says which industry was searched.
 
 The form accepts an industry of 2 to 80 characters, the country India, and the sizes 11-50 and 51-200. Codes are up to 64 characters.
 
@@ -272,7 +272,7 @@ The form accepts an industry of 2 to 80 characters, the country India, and the s
 - **Fixed error bodies.** Every error response uses a fixed message chosen by status code. No thrown-error text, stack trace, key, code or upstream text is returned. Responses carry `Cache-Control: no-store`.
 - **Scrubbing.** Free-text fields in a pipeline result (issue messages, failed-assessment messages, validation reasons, check findings, the run description) are replaced by fixed text chosen by code, once on the server and again when the results are mapped for the page.
 - **Logging.** The application code does not log request bodies, invite codes or results. The hosting platform keeps its standard request logs (method, path and status), which we checked contain no bodies.
-- **No company data stored.** The database holds invite codes (hash, label, run limits, mode), one row per run with counts and costs only, a settings table and rate-limit counters.
+- **Data handling.** The application database stores no company records, only counts and costs. During a live run, the search criteria and company identifiers are sent to Crustdata, and company facts from the results are sent to the model provider in the assessment prompts. Results are returned only to the requesting browser, and our code does not log them. The database holds invite codes (hash, label, run limits, mode), one row per run with counts and costs only, a settings table and rate-limit counters.
 - **Kill switch.** A `live_enabled` setting, off by default in the schema. While it is off, live-mode codes get `live_disabled` (HTTP 503) and the run is given back. Synthetic codes never read it. A live run is also refused when the live keys are not configured.
 - **Tracing is off for real-data runs.** The live path does not use neatlogs.
 
@@ -319,7 +319,7 @@ npx tsx scripts/live-admin.ts kill-switch on|off|status
 
 ### Tested
 
-- The unit suite last ran with 741 passed and 6 skipped (`npm test`).
+- The unit suite last ran with 808 passed and 6 skipped (`npm test`). The 6 skipped are the Postgres integration tests that need `TEST_DATABASE_URL`.
 - An integration test (`tests/live/pg-store.integration.test.ts`) fires 20 parallel run reservations at one code on a managed Postgres and lets exactly one through; the other 19 get `run_in_progress`. It ran once, from a laptop, against a development branch of the managed database. It is skipped unless `TEST_DATABASE_URL` is set, which is why the suite reports one skipped file and 6 skipped tests (the file holds six tests). It runs in a throwaway schema that is dropped afterwards.
 
 ## Tests
@@ -370,6 +370,7 @@ Ownership is taken from commit counts per folder, not from a formal assignment.
 - Live beta: Anthropic's documentation says Claude 4.7 and later models return an error for a non-default temperature, and our client always sends temperature 0; claude-haiku-5-5 is a later model, so we expect it to be affected, but we did not test it.
 - Live beta: there is no alerting and no admin UI. Codes and the kill switch are managed with the admin script.
 - Live beta: the rate limit uses the first of `x-real-ip`, then `x-forwarded-for`. On Vercel the platform sets both and, per Vercel's request-headers documentation, overwrites `x-forwarded-for` to prevent spoofing. On any other host these headers could be spoofed.
+- Our first question to Crustdata did not mention the model provider or a public demo video; we sent a follow-up about both and Crustdata replied that the flow is fine.
 - Run reports are local and not committed, so the numbers in `evidence/summary.json` cannot be re-derived from the repo alone.
 - The Crustdata provider retries HTTP requests (up to 2 retries on 429, 5xx and network errors) inside its post method without rechecking the budget before each retry, so a retry after a lost response could repeat a billable call, up to three attempts for one chunk. We did not observe this: the Crustdata usage page matched our expected credits exactly after the real runs, but we did not log HTTP attempts. Budget checks happen once per logical operation (before each search and before each enrichment chunk).
 
