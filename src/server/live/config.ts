@@ -8,6 +8,8 @@ export interface LiveKeys {
   readonly crustdataApiKey: string;
   readonly llmApiKey: string;
   readonly llmBaseUrl: string;
+  // Optional LIVE_LLM_MODEL; absent means LIVE_RUN_CONFIG.model.
+  readonly llmModel?: string;
 }
 
 export interface LiveConfig {
@@ -25,6 +27,8 @@ export type LiveConfigResult =
 
 type Env = Readonly<Record<string, string | undefined>>;
 
+const MODEL_NAME = /^[A-Za-z0-9._:/-]{1,64}$/;
+
 function present(value: string | undefined): value is string {
   return typeof value === "string" && value.trim() !== "";
 }
@@ -35,6 +39,7 @@ export function readLiveConfig(env: Env = process.env): LiveConfigResult {
   const crustdataApiKey = env.CRUSTDATA_LIVE_API_KEY;
   const llmApiKey = env.LIVE_LLM_API_KEY;
   const llmBaseUrl = env.LIVE_LLM_BASE_URL;
+  const llmModel = env.LIVE_LLM_MODEL;
 
   const missing: string[] = [];
   if (!present(databaseUrl)) missing.push("DATABASE_URL");
@@ -46,9 +51,14 @@ export function readLiveConfig(env: Env = process.env): LiveConfigResult {
   if (!present(llmApiKey)) missingLiveKeys.push("LIVE_LLM_API_KEY");
   if (!present(llmBaseUrl)) missingLiveKeys.push("LIVE_LLM_BASE_URL");
 
+  // Optional: absent keeps the default model, but a value that is set must be valid.
+  const modelSet = present(llmModel);
+  const modelValid = !modelSet || MODEL_NAME.test(llmModel);
+  if (!modelValid) missingLiveKeys.push("LIVE_LLM_MODEL");
+
   const live =
-    present(crustdataApiKey) && present(llmApiKey) && present(llmBaseUrl)
-      ? { crustdataApiKey, llmApiKey, llmBaseUrl }
+    present(crustdataApiKey) && present(llmApiKey) && present(llmBaseUrl) && modelValid
+      ? { crustdataApiKey, llmApiKey, llmBaseUrl, ...(modelSet ? { llmModel } : {}) }
       : null;
   return { ok: true, config: { databaseUrl, hmacSecret, live, missingLiveKeys } };
 }

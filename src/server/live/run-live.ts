@@ -460,12 +460,14 @@ async function runLiveMode(
     excluded_domains: [],
   };
 
+  const config: RunConfig = { ...LIVE_RUN_CONFIG, model: deps.live.llmModel ?? LIVE_RUN_CONFIG.model };
+
   let result: PipelineResult;
   try {
     result = await runImprovedPipeline(
       icp,
       { provider: bundle.provider, budget: bundle.budget, llm, fact_provider: "crustdata" },
-      { config: LIVE_RUN_CONFIG },
+      { config },
     );
   } catch {
     const snap = safeSnapshot(bundle.budget);
@@ -502,7 +504,7 @@ async function runLiveMode(
 
   let results: unknown;
   try {
-    results = deps.toResults(scrubResult(result), { mode: "live", model: LIVE_RUN_CONFIG.model });
+    results = deps.toResults(scrubResult(result), { mode: "live", model: config.model });
   } catch {
     return failed({ searched, enriched, providerCostUsd, modelCostUsd, errorCategory: "results_mapping" });
   }

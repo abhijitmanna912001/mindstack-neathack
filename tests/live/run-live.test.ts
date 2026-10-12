@@ -6,7 +6,7 @@ import type { PipelineResult } from "../../src/core/agent/types";
 import type { CompanyProvider } from "../../src/core/data/provider";
 import { runSyntheticPipeline, syntheticDependencies } from "../../src/app/results/_lib/synthetic-run";
 import { hashCode } from "../../src/server/live/codes";
-import type { LiveKeys } from "../../src/server/live/config";
+import { type LiveKeys, readLiveConfig } from "../../src/server/live/config";
 import {
   LIVE_RUN_CONFIG,
   LIVE_SEARCH_SORT,
@@ -685,4 +685,73 @@ describe("runLive: no leaks", () => {
       expect((o.body as { message: string }).message.length).toBeGreaterThan(0);
     }
   });
+});
+
+describe("runLive: LIVE_LLM_MODEL", () => {
+  const ENV = {
+    DATABASE_URL: "postgres://db.example.test/x",
+    INVITE_HMAC_SECRET: SECRET,
+    CRUSTDATA_LIVE_API_KEY: KEYS.crustdataApiKey,
+    LIVE_LLM_API_KEY: KEYS.llmApiKey,
+    LIVE_LLM_BASE_URL: KEYS.llmBaseUrl,
+  };
+
+  it("passes the model from LIVE_LLM_MODEL to the pipeline config and to ctx.model", async () => {
+    const read = readLiveConfig({ ...ENV, LIVE_LLM_MODEL: "claude-haiku-4-5-20251001" });
+    if (!read.ok || read.config.live === null) throw new Error("config should be live");
+    expect(read.config.live.llmModel).toBe("claude-haiku-4-5-20251001");
+    const h = await harness({ live: read.config.live });
+    h.createProvider.mockImplementation((_k, config) => {
+      expect(config).toEqual(LIVE_RUN_CONFIG);
+      return liveProvider({}, h.autocomplete);
+    });
+    const requested: string[] = [];
+    const inner = new FakeLlmClient();
+    h.createLlm.mockImplementation(() => ({
+      records_llm_spans: false,
+      complete: (req) => {
+        requested.push(req.model);
+        return inner.complete(req);
+      },
+    }));
+    const out = await go(h, LIVE_CODE);
+    expect(out.httpStatus).toBe(200);
+    expect(requested.length).toBeGreaterThan(0);
+    expect(new Set(requested)).toEqual(new Set(["claude-haiku-4-5-20251001"]));
+    expect(h.toResults.mock.calls[0][0].run.config.model).toBe("claude-haiku-4-5-20251001");
+    expect(h.toResults.mock.calls[0][1]).toEqual({ mode: "live", model: "claude-haiku-4-5-20251001" });
+  });
+
+  it("keeps the default model when LIVE_LLM_MODEL is absent", async () => {
+    const read = readLiveConfig(ENV);
+    if (!read.ok || read.config.live === null) throw new Error("config should be live");
+    expect(read.config.live.llmModel).toBeUndefined();
+    const h = await harness({ live: read.config.live });
+    const out = await go(h, LIVE_CODE);
+    expect(out.httpStatus).toBe(200);
+    expect(h.toResults.mock.calls[0][0].run.config.model).toBe(LIVE_RUN_CONFIG.model);
+    expect(h.toResults.mock.calls[0][1]).toEqual({ mode: "live", model: "claude-haiku" });
+  });
+
+  it.each(["", "   ", "bad model", "x".repeat(65), "model;rm", "modèle"])(
+    "treats %j as handled: empty is absent, anything else invalid makes live unavailable",
+    async (value) => {
+      const read = readLiveConfig({ ...ENV, LIVE_LLM_MODEL: value });
+      if (!read.ok) throw new Error("base config should be ok");
+      if (value.trim() === "") {
+        expect(read.config.live).not.toBeNull();
+        return;
+      }
+      expect(read.config.live).toBeNull();
+      expect(read.config.missingLiveKeys).toEqual(["LIVE_LLM_MODEL"]);
+      expect(JSON.stringify(read)).not.toContain(value);
+      const h = await harness({ live: read.config.live });
+      const release = vi.spyOn(h.store, "releaseRun");
+      const out = await go(h, LIVE_CODE);
+      expect(out.httpStatus).toBe(503);
+      expect(out.body).toMatchObject({ status: "live_disabled" });
+      expect(release).toHaveBeenCalledOnce();
+      expect(onlyRun(h).status).toBe("released");
+    },
+  );
 });
