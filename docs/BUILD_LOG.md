@@ -139,9 +139,9 @@ The measured unit costs are search 0.069 dollars per record and enrichment 0.60 
 
 ## Demo
 
-PENDING.
+Demo video: https://youtu.be/Xj1ummRLW-s
 
 ## Submission
 
-- PENDING: a public quote post on X of the official neatlogs post, Monday Oct 12, 7:00 to 11:55 PM IST.
-- PENDING: a demo video of 3 minutes or less covering neatlogs, Entire and cfo.ai.
+- Submission: a public quote post on X of the official neatlogs post, posted on Monday 12 October 2026 (IST): https://x.com/d07f53b74c0b417/status/2109672878870544625
+- Demo video: https://youtu.be/Xj1ummRLW-s

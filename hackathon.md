@@ -3,8 +3,8 @@
 **Project:** SignalScout AI, a prospecting agent that checks its data and its own claims before it spends money or writes outreach.
 **Team:** Abhijit Manna, Garvit Mathur.
 **Try it:** https://mindstack-neathack.vercel.app/live (codes are in [README.md](README.md))
-**Demo video:** <<VIDEO_URL>>
-**Submission post on X:** <<POST_URL>>
+**Demo video:** https://youtu.be/Xj1ummRLW-s
+**Submission post on X:** https://x.com/d07f53b74c0b417/status/2109672878870544625
 
 ## The three required tools, and where to verify them
 

@@ -7,7 +7,8 @@ Built for neatHack 2026 by Abhijit Manna and Garvit Mathur.
 | | |
 |---|---|
 | **Try it** | https://mindstack-neathack.vercel.app/live |
-| **Demo video (3 min)** | <<VIDEO_URL>> |
+| **Demo video** | https://youtu.be/Xj1ummRLW-s |
+| **Submission post (X)** | https://x.com/d07f53b74c0b417/status/2109672878870544625 |
 | **Evidence page** | https://mindstack-neathack.vercel.app/results |
 | **Business plan (cfo.ai)** | https://cfo.ai/s/FD45bXSO15ZacVmj |
 | **Hackathon tools and proof** | [hackathon.md](hackathon.md) |
