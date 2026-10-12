@@ -34,8 +34,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <footer className="border-t border-slate-200 dark:border-slate-800">
           <p className="mx-auto w-full max-w-page px-4 py-4 text-xs text-slate-600 sm:px-6 lg:px-8 dark:text-slate-300">
-            SignalScout AI · neatHack 2026 prototype. Synthetic data only; no
-            live provider calls are made.
+            SignalScout AI, neatHack 2026 prototype. Demo pages use synthetic
+            data. Live Crustdata runs are invite only and switched off by
+            default.
           </p>
         </footer>
       </body>
