@@ -42,7 +42,7 @@ const text = (markup: string) =>
     .trim();
 
 const FOOTER =
-  "SignalScout AI, neatHack 2026 prototype. Demo pages use synthetic data. Live Crustdata runs are invite only and switched off by default.";
+  "SignalScout AI, neatHack 2026 prototype. Demo pages use synthetic data. Live Crustdata runs are invite only and switched off by default. Company data in live runs is provided by Crustdata.";
 
 function layout(children: ReactNode): string {
   const props = { children, params: Promise.resolve({}) } as Parameters<typeof RootLayout>[0];

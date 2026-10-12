@@ -8,11 +8,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { LlmCostSummary, PipelineResult } from "../../../core/agent/types";
 import { runSyntheticPipeline } from "../../results/_lib/synthetic-run";
 import { MODE_BANNER_TITLES, ModeBanner, RunNotices } from "../_components/LiveNotices";
-import { LiveOutcome } from "../_components/LiveOutcome";
+import { LiveFormView } from "../_components/LiveFormView";
+import { CRUSTDATA_ATTRIBUTION, LiveOutcome } from "../_components/LiveOutcome";
 import { CRUSTDATA_SOURCE_OF_TRUTH, LiveRunSummary } from "../_components/LiveRunSummary";
-import { type LiveRunSuccess, SYNTHETIC_NOTICES } from "../_lib/contract";
+import { LIVE_RUN_ERROR_CODES, type LiveRunSuccess, SYNTHETIC_NOTICES } from "../_lib/contract";
+import { buildPreviewFixtures } from "../_lib/fixtures";
 import { type LiveResultsDto, toLiveResultsDto } from "../_lib/live-results";
-import { viewStateFor } from "../_lib/submission";
+import { type LiveViewState, viewStateFor } from "../_lib/submission";
+import { EMPTY_LIVE_FORM, validateLiveForm } from "../_lib/validation";
 
 let base: PipelineResult;
 beforeAll(async () => {
@@ -225,6 +228,79 @@ describe("mode banner and notices", () => {
     const o = text(<RunNotices mode="live" notices={["Searched the closest industry."]} />);
     expect(o).toContain("Searched the closest industry.");
     for (const notice of SYNTHETIC_NOTICES) expect(o).not.toContain(notice);
+  });
+});
+
+describe("Crustdata attribution", () => {
+  const noop = () => {};
+  const live = (): LiveRunSuccess => ({
+    status: "ok",
+    mode: "live",
+    results: liveDto(GATEWAY),
+    usage: { runsRemaining: 1 },
+    notices: [],
+  });
+  const synthetic = (): LiveRunSuccess => ({
+    status: "ok",
+    mode: "synthetic",
+    results: syntheticDto(),
+    usage: { runsRemaining: 1 },
+    notices: [...SYNTHETIC_NOTICES],
+  });
+  const outcome = (state: LiveViewState, preview = false) =>
+    text(<LiveOutcome state={state} preview={preview} onBack={noop} onRetry={noop} />);
+  const count = (s: string) => s.split(CRUSTDATA_ATTRIBUTION).length - 1;
+
+  it("appears after the run summary and after the prospect cards for a live-mode result", () => {
+    expect(CRUSTDATA_ATTRIBUTION).toBe("Company data provided by Crustdata.");
+    const o = outcome(viewStateFor(live()));
+    expect(count(o)).toBe(2);
+    const first = o.indexOf(CRUSTDATA_ATTRIBUTION);
+    const second = o.lastIndexOf(CRUSTDATA_ATTRIBUTION);
+    // After the live run summary, before the metrics panel.
+    expect(o.indexOf("Live run summary")).toBeLessThan(first);
+    expect(first).toBeLessThan(o.indexOf("Guardrail metrics"));
+    // After the last prospect card, before the new-search button.
+    const lastProspect = live().results.prospects.at(-1)!.display_name;
+    expect(o.lastIndexOf(lastProspect)).toBeLessThan(second);
+    expect(second).toBeLessThan(o.indexOf("Start a new search"));
+  });
+
+  it("does not appear for a synthetic-mode result", () => {
+    expect(count(outcome(viewStateFor(synthetic())))).toBe(0);
+  });
+
+  it("does not appear for preview-mode results", async () => {
+    const fixtures = await buildPreviewFixtures();
+    expect(count(outcome(viewStateFor(fixtures.success), true))).toBe(0);
+    expect(count(outcome(viewStateFor(fixtures.partial), true))).toBe(0);
+  });
+
+  it("does not appear on errors, a timeout or while loading", () => {
+    for (const code of LIVE_RUN_ERROR_CODES) {
+      expect(count(outcome({ kind: "error", code })), code).toBe(0);
+    }
+    expect(count(outcome({ kind: "error", code: "invalid_request", field: "industry" }))).toBe(0);
+    expect(count(outcome({ kind: "timeout" }))).toBe(0);
+    expect(count(outcome({ kind: "loading" }))).toBe(0);
+  });
+
+  it("does not appear on the form, with or without validation errors", () => {
+    const check = validateLiveForm(EMPTY_LIVE_FORM);
+    if (check.ok) throw new Error("expected errors");
+    const form = text(
+      <LiveFormView
+        values={EMPTY_LIVE_FORM}
+        errors={check.errors}
+        submitting={false}
+        onCodeChange={noop}
+        onIndustryChange={noop}
+        onSizeChange={noop}
+        onSubmit={noop}
+      />,
+    );
+    expect(form).toContain("Enter your invitation code.");
+    expect(count(form)).toBe(0);
   });
 });
 

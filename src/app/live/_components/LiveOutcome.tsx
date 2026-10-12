@@ -23,6 +23,14 @@ const buttonPrimary =
 const buttonSecondary =
   "inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800";
 
+export const CRUSTDATA_ATTRIBUTION = "Company data provided by Crustdata.";
+
+// Shown with live-mode results only, after the run summary and after the
+// prospect cards. Synthetic results (including preview mode) never show it.
+function CrustdataAttribution() {
+  return <p className="text-xs font-medium text-slate-600 dark:text-slate-300">{CRUSTDATA_ATTRIBUTION}</p>;
+}
+
 function Results({ response, partial, preview, onBack }: { response: LiveRunSuccess; partial: boolean; preview: boolean; onBack: () => void }) {
   const { results, usage, notices } = response;
   const { mode } = results.run;
@@ -61,6 +69,7 @@ function Results({ response, partial, preview, onBack }: { response: LiveRunSucc
       </p>
 
       <LiveRunSummary results={results} />
+      {mode === "live" && <CrustdataAttribution />}
       {mode === "live" ? (
         <MetricsPanel
           metrics={results.metrics}
@@ -80,6 +89,7 @@ function Results({ response, partial, preview, onBack }: { response: LiveRunSucc
           <ProspectCard key={p.company_id} prospect={p} />
         ))}
       </div>
+      {mode === "live" && <CrustdataAttribution />}
 
       <button type="button" onClick={onBack} className={`${buttonSecondary} self-start`}>
         Start a new search
