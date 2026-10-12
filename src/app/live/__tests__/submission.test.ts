@@ -6,8 +6,21 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { LiveRunAdapter, LiveRunRequest, LiveRunResponse } from "../_lib/contract";
 import { LIVE_RUN_ERROR_CODES } from "../_lib/contract";
 import { buildPreviewFixtures } from "../_lib/fixtures";
-import { createPreviewAdapter, PREVIEW_SCENARIOS, previewResponse, type PreviewFixtures } from "../_lib/preview";
-import { createSubmissionController, isPartialResults, viewStateFor } from "../_lib/submission";
+import {
+  createPreviewAdapter,
+  PREVIEW_INVALID_FIELD,
+  PREVIEW_RETRY_AFTER_SECONDS,
+  PREVIEW_SCENARIOS,
+  previewError,
+  previewResponse,
+  type PreviewFixtures,
+} from "../_lib/preview";
+import {
+  ADAPTER_FAILURE_MESSAGE,
+  createSubmissionController,
+  isPartialResults,
+  viewStateFor,
+} from "../_lib/submission";
 
 let fetchCalls = 0;
 beforeAll(() => {
@@ -74,7 +87,7 @@ describe("submission controller", () => {
     const { adapter, calls, release } = deferredAdapter();
     const controller = createSubmissionController(adapter);
     const first = controller.submit(REQUEST);
-    release({ status: "error", code: "rate_limited" });
+    release({ status: "rate_limited", message: "Too many requests.", retryAfterSeconds: 5 });
     await first;
     const again = controller.submit(REQUEST);
     expect(calls).toHaveLength(2);
@@ -88,7 +101,10 @@ describe("submission controller", () => {
         throw new Error("boom");
       },
     });
-    expect(await controller.submit(REQUEST)).toEqual({ kind: "done", response: { status: "error", code: "run_failed" } });
+    expect(await controller.submit(REQUEST)).toEqual({
+      kind: "done",
+      response: { status: "run_failed", message: ADAPTER_FAILURE_MESSAGE },
+    });
     expect(controller.inFlight).toBe(false);
   });
 });
@@ -100,9 +116,30 @@ describe("preview adapter", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it.each(LIVE_RUN_ERROR_CODES)("returns the fixed %s error", async (code) => {
+  it.each(LIVE_RUN_ERROR_CODES)("returns the fixed %s error body", async (code) => {
     const adapter = createPreviewAdapter(fixtures, () => code, 0);
-    expect(await adapter.submit(REQUEST)).toEqual({ status: "error", code });
+    const response = await adapter.submit(REQUEST);
+    expect(response).toEqual(previewError(code));
+    expect(response.status).toBe(code);
+  });
+
+  it("gives the invalid-request and rate-limit examples their optional fields", () => {
+    expect(previewError("invalid_request")).toMatchObject({ field: PREVIEW_INVALID_FIELD });
+    expect(previewError("rate_limited")).toMatchObject({ retryAfterSeconds: PREVIEW_RETRY_AFTER_SECONDS });
+  });
+
+  it("ignores the submitted ICP, like a synthetic-mode code", async () => {
+    const adapter = createPreviewAdapter(fixtures, () => "success", 0);
+    const other: LiveRunRequest = {
+      code: "ANOTHER-CODE",
+      icp: { industry: "Quantum basket weaving", country: "India", sizes: ["51-200"] },
+    };
+    const first = await adapter.submit(REQUEST);
+    const second = await adapter.submit(other);
+    expect(second).toBe(first);
+    const json = JSON.stringify(second);
+    expect(json).not.toContain(REQUEST.icp.industry);
+    expect(json).not.toContain(other.icp.industry);
   });
 
   it("returns the synthetic success and partial responses", async () => {
@@ -140,16 +177,49 @@ describe("view state", () => {
   it("maps each response to the state the page renders", () => {
     expect(viewStateFor(fixtures.success)).toEqual({ kind: "success", response: fixtures.success, partial: false });
     expect(viewStateFor(fixtures.partial)).toEqual({ kind: "success", response: fixtures.partial, partial: true });
-    for (const code of LIVE_RUN_ERROR_CODES) {
+    expect(viewStateFor(previewResponse("invalid_request", fixtures))).toEqual({
+      kind: "error",
+      code: "invalid_request",
+      field: PREVIEW_INVALID_FIELD,
+    });
+    expect(viewStateFor(previewResponse("rate_limited", fixtures))).toEqual({
+      kind: "error",
+      code: "rate_limited",
+      retryAfterSeconds: PREVIEW_RETRY_AFTER_SECONDS,
+    });
+    for (const code of LIVE_RUN_ERROR_CODES.filter((c) => c !== "invalid_request" && c !== "rate_limited")) {
       expect(viewStateFor(previewResponse(code, fixtures))).toEqual({ kind: "error", code });
     }
   });
 
+  it("keeps field and retryAfterSeconds only on the errors they belong to", () => {
+    expect(viewStateFor({ status: "invalid_code", message: "m", field: "code", retryAfterSeconds: 3 })).toEqual({
+      kind: "error",
+      code: "invalid_code",
+    });
+  });
+
   it("treats a stopped run or a cut-short step as partial", () => {
     const results = fixtures.success.results;
+    const withIssue = (code: string) => ({ ...results, issues: [{ code, message: "x" }] });
     expect(isPartialResults(results)).toBe(false);
     expect(isPartialResults({ ...results, run: { ...results.run, status: "stopped" } })).toBe(true);
-    expect(isPartialResults({ ...results, issues: [{ code: "enrich_partial", message: "x" }] })).toBe(true);
-    expect(isPartialResults({ ...results, issues: [{ code: "extra_locations_ignored", message: "x" }] })).toBe(false);
+    for (const code of ["enrich_partial", "llm_call_cap_reached", "llm_stopped", "enrich_failed", "enrich_budget_exhausted"]) {
+      expect(isPartialResults(withIssue(code)), code).toBe(true);
+    }
+    expect(isPartialResults(withIssue("extra_locations_ignored"))).toBe(false);
+    expect(isPartialResults(withIssue("llm_cost_incomplete"))).toBe(false);
+  });
+
+  it("does not treat a completed empty search as partial", () => {
+    const results = fixtures.success.results;
+    const empty = {
+      ...results,
+      run: { ...results.run, status: "completed_empty" as const },
+      issues: [{ code: "search_no_match", message: "x" }],
+      prospects: [],
+    };
+    expect(isPartialResults(empty)).toBe(false);
+    expect(viewStateFor({ ...fixtures.success, results: empty })).toMatchObject({ kind: "success", partial: false });
   });
 });

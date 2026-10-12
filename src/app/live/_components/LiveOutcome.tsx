@@ -1,14 +1,16 @@
-import { StatTile } from "../../_components/results/StatTile";
 import { Badge } from "../../results/_components/Badge";
+import { MetricsPanel } from "../../results/_components/MetricsPanel";
 import { ProspectCard } from "../../results/_components/ProspectCard";
 import type { LiveRunSuccess } from "../_lib/contract";
-import { ERROR_PRESENTATION } from "../_lib/messages";
+import { ERROR_PRESENTATION, invalidFieldText, retryAfterText } from "../_lib/messages";
 import type { LiveViewState } from "../_lib/submission";
+import { ModeBanner, RunNotices } from "./LiveNotices";
+import { LiveRunSummary } from "./LiveRunSummary";
 
 export interface LiveOutcomeProps {
   readonly state: LiveViewState;
   // True while the page is a frontend preview: results are labelled as
-  // synthetic and never as live.
+  // synthetic preview data and never as live.
   readonly preview: boolean;
   readonly onBack: () => void;
   readonly onRetry: () => void;
@@ -21,6 +23,7 @@ const buttonSecondary =
 
 function Results({ response, partial, preview, onBack }: { response: LiveRunSuccess; partial: boolean; preview: boolean; onBack: () => void }) {
   const { results, usage, notices } = response;
+  const { mode } = results.run;
   return (
     <section aria-labelledby="live-results-title" className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -30,6 +33,9 @@ function Results({ response, partial, preview, onBack }: { response: LiveRunSucc
         {preview && <Badge tone="warn">Synthetic preview data, not a live result</Badge>}
         {partial && <Badge tone="warn">Partial</Badge>}
       </div>
+
+      <ModeBanner mode={mode} model={results.run.model} />
+      <RunNotices mode={mode} notices={notices} />
 
       {partial && (
         <div
@@ -47,28 +53,20 @@ function Results({ response, partial, preview, onBack }: { response: LiveRunSucc
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Runs remaining" value={String(usage.runsRemaining)} />
-        <StatTile label="Companies searched" value={String(usage.searched)} />
-        <StatTile label="Companies enriched" value={String(usage.enriched)} />
-        <StatTile
-          label="Provider cost"
-          value={`$${usage.providerCostUsd.toFixed(2)}`}
-          hint={preview ? "Simulated, from fixture prices" : "Sponsored by the builders"}
-        />
-      </div>
+      <p className="text-sm text-slate-700 dark:text-slate-200">
+        Runs remaining on this invitation: <span className="font-semibold tabular-nums">{usage.runsRemaining}</span>
+        {preview && " (a made-up preview value)"}
+      </p>
 
-      {notices.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          {notices.map((notice) => (
-            <li
-              key={notice}
-              className="rounded-lg border-l-4 border-indigo-400 bg-indigo-50/60 px-3 py-2 text-sm text-slate-800 dark:border-indigo-400/60 dark:bg-indigo-500/10 dark:text-slate-100"
-            >
-              {notice}
-            </li>
-          ))}
-        </ul>
+      <LiveRunSummary results={results} />
+      {mode === "live" ? (
+        <MetricsPanel
+          metrics={results.metrics}
+          title="Guardrail metrics"
+          description="Counts and company IDs the improved pipeline reported for this run."
+        />
+      ) : (
+        <MetricsPanel metrics={results.metrics} />
       )}
 
       <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -110,6 +108,8 @@ export function LiveOutcome({ state, preview, onBack, onRetry }: LiveOutcomeProp
       );
     case "error": {
       const error = ERROR_PRESENTATION[state.code];
+      const fieldText = invalidFieldText(state.field);
+      const waitText = retryAfterText(state.retryAfterSeconds);
       return (
         <section
           role="alert"
@@ -120,7 +120,9 @@ export function LiveOutcome({ state, preview, onBack, onRetry }: LiveOutcomeProp
             {preview && <Badge tone="warn">Simulated response</Badge>}
           </div>
           <p className="text-sm text-slate-800 dark:text-slate-100">{error.message}</p>
+          {fieldText && <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{fieldText}</p>}
           <p className="text-sm text-slate-700 dark:text-slate-200">{error.recovery}</p>
+          {waitText && <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{waitText}</p>}
           <div className="flex flex-wrap gap-2">
             {error.action === "retry" && (
               <button type="button" onClick={onRetry} className={buttonPrimary}>

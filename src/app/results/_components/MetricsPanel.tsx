@@ -17,9 +17,17 @@ function Row({ label, value, ids }: { label: string; value: IdCountDto | number;
   );
 }
 
-export function MetricsPanel({ metrics }: { metrics: MetricsDto | null }) {
+export function MetricsPanel({
+  metrics,
+  title = "Demo run guardrail metrics",
+  description = "Counts and company IDs the improved pipeline reported for this demonstration run.",
+}: {
+  metrics: MetricsDto | null;
+  title?: string;
+  description?: string;
+}) {
   return (
-    <Panel title="Demo run guardrail metrics" description="Counts and company IDs the improved pipeline reported for this demonstration run.">
+    <Panel title={title} description={description}>
       {metrics ? (
         <dl>
           <Row label="Rejected by validation" value={metrics.rejected} />

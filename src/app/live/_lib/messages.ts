@@ -49,9 +49,9 @@ export const ERROR_PRESENTATION: Readonly<Record<LiveRunErrorCode, ErrorPresenta
     recovery: "Please try again later.",
     action: "none",
   },
-  service_unavailable: {
-    title: "Service unavailable",
-    message: "A service the run depends on is not available right now.",
+  live_unavailable: {
+    title: "Live mode unavailable",
+    message: "Live mode, or a service it depends on, is not available right now.",
     recovery: "Try again in a few minutes.",
     action: "retry",
   },
@@ -68,3 +68,32 @@ export const ERROR_PRESENTATION: Readonly<Record<LiveRunErrorCode, ErrorPresenta
     action: "retry",
   },
 };
+
+// The fields an invalid_request error can name, and how the page refers to
+// them. "icp" is the whole search profile.
+const FIELD_LABELS: Readonly<Record<string, string>> = {
+  code: "Invitation code",
+  industry: "Industry",
+  country: "Country",
+  sizes: "Company size",
+  icp: "Search details",
+};
+
+export function fieldLabel(field: string): string | undefined {
+  return Object.hasOwn(FIELD_LABELS, field) ? FIELD_LABELS[field] : undefined;
+}
+
+// Shown next to the field an invalid_request error names.
+export const SERVER_FIELD_ERROR = "Not accepted. Check this field and submit again.";
+
+export function invalidFieldText(field: string | undefined): string | undefined {
+  const label = field === undefined ? undefined : fieldLabel(field);
+  return label === undefined ? undefined : `Check this field: ${label}.`;
+}
+
+export function retryAfterText(seconds: number | undefined): string | undefined {
+  if (seconds === undefined) return undefined;
+  if (seconds < 60) return `You can try again in about ${seconds} ${seconds === 1 ? "second" : "seconds"}.`;
+  const minutes = Math.ceil(seconds / 60);
+  return `You can try again in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`;
+}
