@@ -11,7 +11,7 @@
 | Tool | What we did | Proof |
 |---|---|---|
 | **neatlogs** | Traced the two official fixture runs. | Trace pages: [baseline-final](https://app.neatlogs.com/traces/2656454332a37be4735a5ece62eb2145), [improved-final](https://app.neatlogs.com/traces/4716d3a09e7987c50643619aaffaed50). The pages have no Share button, so whether they open outside our project is not verified. Offline copies: `evidence/traces/*.md`. |
-| **Entire** | Worked with Claude Code under Entire checkpoints. | 34 `Entire-Checkpoint` trailers in the commit history (count them: `git log --format=%B \| grep -c '^Entire-Checkpoint:'`). Table with links: [docs/BUILD_LOG.md](docs/BUILD_LOG.md). A few commits carry none (for example b9d50ff, 43bac0e and 0ac151a, frontend pull requests whose sessions had diverged), and we did not add trailers by hand. |
+| **Entire** | Worked with Claude Code under Entire checkpoints. | 36 `Entire-Checkpoint` trailers in the commit history at the time of writing (count them: `git log --format=%B \| grep -c '^Entire-Checkpoint:'`). Table with links: [docs/BUILD_LOG.md](docs/BUILD_LOG.md). A few commits carry none (for example b9d50ff, 43bac0e and 0ac151a, frontend pull requests whose sessions had diverged), and we did not add trailers by hand. |
 | **cfo.ai** | Business plan from measured costs. | [Plan](https://cfo.ai/s/FD45bXSO15ZacVmj). Measured: search $0.069 per record, enrichment $0.60 per company. Everything else, including the $40 per run price and the 60.10% estimated contribution margin, is an assumption in a hypothetical model, and not validated. |
 
 ## Stack

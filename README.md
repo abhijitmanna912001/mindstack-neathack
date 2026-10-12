@@ -58,7 +58,7 @@ These are small samples, one scenario and one run each. They show the mechanism,
 | Tool | How we used it |
 |---|---|
 | **neatlogs** | Traces of the two official runs (`baseline-final`, `improved-final`). Markdown exports in [evidence/traces/](evidence/traces/). The improved trace shows the validation and guardrail spans. |
-| **Entire** | Checkpoints on our Claude Code work. 34 `Entire-Checkpoint` trailers in the history. List and caveats in [hackathon.md](hackathon.md). |
+| **Entire** | Checkpoints on our Claude Code work. 36 `Entire-Checkpoint` trailers in the history at the time of writing. List and caveats in [hackathon.md](hackathon.md). |
 | **cfo.ai** | [Business plan](https://cfo.ai/s/FD45bXSO15ZacVmj) built from measured unit costs: search $0.069 per record, enrichment $0.60 per company. Estimated contribution margin 60.10% at an assumed, unvalidated $40 per run. Excludes failed-job spend, tools and hosting, and salaries. |
 | **Crustdata** | Company data for search and enrichment. Their team replied (informally, 12 Oct) that this invite-only use is fine and asked for an attribution line, which the live page shows. |
 
