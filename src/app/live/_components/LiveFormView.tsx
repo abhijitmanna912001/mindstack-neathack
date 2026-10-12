@@ -8,12 +8,15 @@ export interface LiveFormViewProps {
   readonly values: LiveFormValues;
   readonly errors: LiveFormErrors;
   readonly submitting: boolean;
-  readonly scenario: PreviewScenario;
   readonly onCodeChange: (value: string) => void;
   readonly onIndustryChange: (value: string) => void;
   readonly onSizeChange: (size: LiveCompanySize, checked: boolean) => void;
-  readonly onScenarioChange: (scenario: PreviewScenario) => void;
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  // Preview mode only (/live?preview=1): the simulated-response picker.
+  readonly preview?: {
+    readonly scenario: PreviewScenario;
+    readonly onScenarioChange: (scenario: PreviewScenario) => void;
+  };
 }
 
 // The invitation code format, as an example only: eight groups of four.
@@ -23,14 +26,14 @@ const INDUSTRY_HINT = "In your own words. The live service will match it to the 
 const COUNTRY_HINT = "The beta covers companies in India only.";
 
 export const SYNTHETIC_CODE_NOTE =
-  "Some invitation codes are synthetic demo codes. A synthetic-mode code runs a demo on fixture companies with a fake model and ignores the industry, country and company size you submit. Live codes search Crustdata with them.";
+  "Some invitation codes are synthetic demo codes. A synthetic-mode code ignores the industry, country and company size you submit and uses fixture data: fixture companies and a fake model. Live codes search Crustdata with your criteria.";
 
 // The live-run form. Inputs deliberately have no name attribute: even a
 // native submission before the page's script loads can never put the
 // invitation code (or anything else) into the URL. The page handles
 // submission itself.
 export function LiveFormView(props: LiveFormViewProps) {
-  const { values, errors, submitting } = props;
+  const { values, errors, submitting, preview } = props;
   return (
     <form
       method="post"
@@ -47,9 +50,16 @@ export function LiveFormView(props: LiveFormViewProps) {
         <p className="text-sm text-slate-600 dark:text-slate-300">All fields are required.</p>
       </div>
 
-      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-slate-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-slate-100">
-        {SYNTHETIC_CODE_NOTE}
-      </p>
+      <div
+        role="note"
+        aria-labelledby="live-synthetic-note"
+        className="flex flex-col gap-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-slate-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-slate-100"
+      >
+        <p id="live-synthetic-note" className="font-semibold text-slate-900 dark:text-slate-50">
+          Synthetic demo codes
+        </p>
+        <p>{SYNTHETIC_CODE_NOTE}</p>
+      </div>
 
       <FormField id="live-code" label="Invitation code" hint={CODE_HINT} error={errors.code}>
         <input
@@ -133,26 +143,28 @@ export function LiveFormView(props: LiveFormViewProps) {
         )}
       </fieldset>
 
-      <FormField
-        id="live-preview-scenario"
-        label="Preview: simulated server response"
-        hint="Frontend preview only. Picks which synthetic response the preview shows; no request is sent."
-      >
-        <select
+      {preview && (
+        <FormField
           id="live-preview-scenario"
-          value={props.scenario}
-          onChange={(e) => props.onScenarioChange(e.target.value as PreviewScenario)}
-          disabled={submitting}
-          aria-describedby="live-preview-scenario-hint"
-          className={`${inputClassName(false)} border-dashed`}
+          label="Preview: simulated server response"
+          hint="Preview mode only. Picks which synthetic response the preview shows; no request is sent."
         >
-          {PREVIEW_SCENARIOS.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </FormField>
+          <select
+            id="live-preview-scenario"
+            value={preview.scenario}
+            onChange={(e) => preview.onScenarioChange(e.target.value as PreviewScenario)}
+            disabled={submitting}
+            aria-describedby="live-preview-scenario-hint"
+            className={`${inputClassName(false)} border-dashed`}
+          >
+            {PREVIEW_SCENARIOS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      )}
 
       <button
         type="submit"
@@ -163,7 +175,7 @@ export function LiveFormView(props: LiveFormViewProps) {
         {submitting && (
           <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
         )}
-        {submitting ? "Running…" : "Run search (preview)"}
+        {submitting ? "Running…" : preview ? "Run search (preview)" : "Run search"}
       </button>
     </form>
   );

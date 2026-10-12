@@ -10,6 +10,8 @@ export type LiveViewState =
   | { readonly kind: "idle" }
   | { readonly kind: "loading" }
   | { readonly kind: "success"; readonly response: LiveRunSuccess; readonly partial: boolean }
+  // No response within the client timeout. Not a server status.
+  | { readonly kind: "timeout" }
   | {
       readonly kind: "error";
       readonly code: LiveRunErrorCode;
@@ -59,32 +61,57 @@ export function serverFieldErrors(view: LiveViewState): LiveFormErrors {
   return field === "code" || field === "industry" || field === "sizes" ? { [field]: SERVER_FIELD_ERROR } : {};
 }
 
+// Thrown by an adapter when the page stopped waiting for the server.
+export class LiveRunTimeoutError extends Error {
+  constructor() {
+    super("live run timed out");
+    this.name = "LiveRunTimeoutError";
+  }
+}
+
+// Thrown by an adapter when the caller aborted the request (for example the
+// page was closed). The outcome is ignored.
+export class LiveRunAbortedError extends Error {
+  constructor() {
+    super("live run aborted");
+    this.name = "LiveRunAbortedError";
+  }
+}
+
 export type SubmitOutcome =
   | { readonly kind: "done"; readonly response: LiveRunResponse }
+  // The page stopped waiting; the server may still be finishing the run.
+  | { readonly kind: "timeout" }
+  // The caller aborted the request; nothing is shown.
+  | { readonly kind: "aborted" }
   // A run was already in progress; nothing was sent.
   | { readonly kind: "ignored" };
 
 export interface SubmissionController {
   readonly inFlight: boolean;
-  submit(request: LiveRunRequest): Promise<SubmitOutcome>;
+  submit(request: LiveRunRequest, options?: { readonly signal?: AbortSignal }): Promise<SubmitOutcome>;
 }
 
 export const ADAPTER_FAILURE_MESSAGE = "The run could not be completed.";
 
 // Wraps an adapter so a second submission while one is running is ignored
-// instead of sent. A thrown adapter error becomes a failed run.
+// instead of sent. inFlight is set synchronously, before the first await, so
+// a second click before React re-renders is ignored too. Any other thrown
+// adapter error becomes a failed run, never its error text.
 export function createSubmissionController(adapter: LiveRunAdapter): SubmissionController {
   let inFlight = false;
   return {
     get inFlight() {
       return inFlight;
     },
-    async submit(request) {
+    async submit(request, options) {
       if (inFlight) return { kind: "ignored" };
       inFlight = true;
       try {
-        return { kind: "done", response: await adapter.submit(request) };
-      } catch {
+        return { kind: "done", response: await adapter.submit(request, options) };
+      } catch (err) {
+        if (err instanceof LiveRunTimeoutError) return { kind: "timeout" };
+        if (err instanceof LiveRunAbortedError) return { kind: "aborted" };
         return { kind: "done", response: { status: "run_failed", message: ADAPTER_FAILURE_MESSAGE } };
       } finally {
         inFlight = false;
