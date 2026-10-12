@@ -13,12 +13,20 @@ export default function Home() {
           evidence behind each score, budget usage and draft outreach in one
           place.
         </p>
-        <Link
-          href="/results"
-          className="self-start text-sm font-semibold text-indigo-700 underline-offset-4 hover:underline dark:text-indigo-300"
-        >
-          See the results: official fixture evidence and a synthetic guardrail demo →
-        </Link>
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+          <Link
+            href="/results"
+            className="self-start text-sm font-semibold text-indigo-700 underline-offset-4 hover:underline dark:text-indigo-300"
+          >
+            See the results: official fixture evidence and a synthetic guardrail demo →
+          </Link>
+          <Link
+            href="/live"
+            className="self-start text-sm font-semibold text-indigo-700 underline-offset-4 hover:underline dark:text-indigo-300"
+          >
+            Try the invite-only live beta →
+          </Link>
+        </div>
       </div>
       <ProspectWorkspace />
     </main>

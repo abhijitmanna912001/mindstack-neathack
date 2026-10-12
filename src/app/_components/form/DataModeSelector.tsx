@@ -3,6 +3,9 @@ type DataModeSelectorProps = {
   error?: string;
 };
 
+export const LIVE_CRUSTDATA_HELPER =
+  "Live runs are invite only and run on the Live beta page. They are switched off by default.";
+
 // Synthetic data is the only selectable mode. The live option is shown for
 // context but stays disabled; the Server Action also rejects it, so enabling
 // the radio in the browser does not unlock paid Crustdata calls.
@@ -47,8 +50,7 @@ export function DataModeSelector({ defaultValue, error }: DataModeSelectorProps)
             Live Crustdata
           </span>
           <span className="text-xs text-slate-600 dark:text-slate-300">
-            Uses paid credits. Requires operator access and is not enabled in
-            this build.
+            {LIVE_CRUSTDATA_HELPER}
           </span>
         </span>
       </label>
