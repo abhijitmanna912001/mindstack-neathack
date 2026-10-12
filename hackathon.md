@@ -16,6 +16,7 @@ Abhijit Manna, Garvit Mathur.
 - Crustdata for company data
 - LiteLLM gateway (OpenAI SDK) for model calls, model `claude-haiku`
 - cfo.ai for the business plan
+- Live beta: Postgres through `pg`, deployed on Vercel Hobby with a Neon Postgres database
 
 ## Build log
 
@@ -46,6 +47,17 @@ Times are IST (+05:30).
 - 15:32 to 16:06: Built the results page at `/results` (synthetic mode only, official evidence from `evidence/summary.json`, live-data validation counts, guardrail demo), then merged pull request #5. Commits: [bb6452b](https://entire.io/gh/abhijitmanna912001/mindstack-neathack/commit/bb6452bab1a28720bbe2e09d1d156c1d419a34cd) (build results UI), [d8a9ea1](https://entire.io/gh/abhijitmanna912001/mindstack-neathack/commit/d8a9ea118d1c1e88bd9e0fda7d84301d1c2da4d1) (live-data evidence), [d47b31f](https://entire.io/gh/abhijitmanna912001/mindstack-neathack/commit/d47b31f6a1c5ea6424571d058824c60de67da7af) (README and build log, Entire-Checkpoint 01M4N7QW6CQ23Y5C501EBFKH0B), merge [7f3642e](https://entire.io/gh/abhijitmanna912001/mindstack-neathack/commit/7f3642e18c5c4045c473e2e4498a2b82eb0fb956). Only d47b31f carries an `Entire-Checkpoint` trailer; the other links are built from the sha and are not verified to open.
 - Ran the baseline and improved pipelines once each on the same 10 live Crustdata records with the real model (claude-haiku through the hackathon gateway), tracing off. Real company profiles were sent to the gateway. The run reports are local and not committed.
 - Added the counts from these live-data runs with the real model to `evidence/summary.json` (key `real_data_real_model`); they are written up in `README.md`.
+- 17:11 and 20:46: Formatted official model costs to four decimals, and handled a Crustdata 402 as an exhausted key budget.
+- 22:17 and 22:20: Added the live-mode data layer (invite codes, atomic run reservation, kill switch) and a per-code mode (synthetic or live).
+- 22:32 to 23:16: Added the invite-only live beta frontend preview, the live-mode orchestration with an injected results mapper (merged pull request #7), and the live-mode route handlers.
+
+### Oct 12, 2026
+
+- 00:04 and 00:22: Answered `live_disabled` when live is not configured, trimmed usage to `runsRemaining`, and added the live results DTO with a cost-aware summary (b9d50ff, merged as pull request #8 at 09:17).
+- 09:22: Made the API runtime use the live-safe results mapper for both modes.
+- Documented the live beta and the deployment in `README.md`. The production deployment is on Vercel Hobby with a Neon Postgres database at https://mindstack-neathack.vercel.app. Live mode is disabled there because no live keys are configured, so outsiders get synthetic mode only; live mode for third parties waits for Crustdata's written confirmation.
+- The unit suite last ran with 741 passed and 6 skipped. The skipped tests are the Postgres integration test, which runs only when `TEST_DATABASE_URL` is set; it ran once from a laptop against a development branch, with 20 parallel run reservations at one code and exactly one let through.
+- Entire checkpoints: a few commits carry no `Entire-Checkpoint` trailer, including b9d50ff (a frontend pull request), fa6ebcb, e72f80e and adc3703, and several earlier ones. They are not in the checkpoint table below.
 
 ## Evidence
 

@@ -210,6 +210,88 @@ Only synthetic mode is supported. Any other mode, for example `?mode=live`, is r
 
 `evidence/summary.json` is bundled at build time, so rebuild or restart the dev server after editing it.
 
+## Live beta (invite-only)
+
+The page at `/live` takes an invite code and a small ICP form, and runs the improved pipeline for that code. The server routes are `POST /api/live/run` (a run) and `GET /api/live/status` (whether live mode is switched on).
+
+### Status
+
+This paragraph is the one place to edit when the facts change.
+
+- The production deployment is at https://mindstack-neathack.vercel.app.
+- Live mode is disabled in production because no live keys are configured there.
+- Outsiders get synthetic mode only.
+- Live mode for third parties waits for Crustdata's written confirmation.
+
+### Modes
+
+Each invite code is bound to one mode, set by whoever creates it (default `synthetic`).
+
+- **synthetic.** Fixture companies and a fake model. The search criteria you enter are ignored (the response says so), and nothing is spent. One outreach draft deliberately contains an injected unsupported number so the claim check can be seen suppressing it.
+- **live.** Real Crustdata data and a real model (`claude-haiku` through the gateway), for the builders only. A live run searches up to 10 companies, enriches up to 5, and allows up to 20 model calls and 1500 output tokens per call. The search is sorted by company id ascending. The industry you type is matched to the first autocomplete suggestion from Crustdata, and the response says which industry was searched.
+
+The form accepts an industry of 2 to 80 characters, the country India, and the sizes 11-50 and 51-200. Codes are up to 64 characters.
+
+### How a run is protected
+
+- **Hashed codes.** Codes are stored as HMAC-SHA256 hashes keyed with `INVITE_HMAC_SECRET` (at least 32 characters). Codes are normalised first (case, dashes and spaces ignored). Generated codes are 32 characters from a 160-bit random value.
+- **One atomic reservation.** A run is reserved with a single conditional database update that increments the use count only if the code exists, is enabled, has runs left and is not locked.
+- **One run at a time per code.** The reservation sets a lock that lasts 330 seconds. It is cleared when the run finishes or is given back. A second request while the lock is held gets `run_in_progress` (HTTP 409).
+- **Give-back.** If a live run fails before the first paid call, the reservation is released and the run is not counted. A live run that fails after that is counted.
+- **Per-IP rate limits.** 20 run requests per 60 seconds per IP. 5 wrong-code attempts per 900 seconds per IP (an unknown or disabled code counts). 60 status requests per 60 seconds per IP. IPs are stored only as HMAC hashes. Windows are fixed windows, not sliding.
+- **Body limit.** A request body over 4096 bytes, a non-JSON content type or invalid JSON gets the fixed `invalid_request` body.
+- **Fixed error bodies.** Every error response uses a fixed message chosen by status code. No thrown-error text, stack trace, key, code or upstream text is returned. Responses carry `Cache-Control: no-store`.
+- **Scrubbing.** Free-text fields in a pipeline result (issue messages, failed-assessment messages, validation reasons, check findings, the run description) are replaced by fixed text chosen by code, once on the server and again when the results are mapped for the page.
+- **Logging.** The application code does not log request bodies, invite codes or results. The hosting platform keeps its standard request logs (method, path and status), which we checked contain no bodies.
+- **No company data stored.** The database holds invite codes (hash, label, run limits, mode), one row per run with counts and costs only, a settings table and rate-limit counters.
+- **Kill switch.** A `live_enabled` setting, off by default in the schema. While it is off, live-mode codes get `live_disabled` (HTTP 503) and the run is given back. Synthetic codes never read it. A live run is also refused when the live keys are not configured.
+- **Tracing is off for real-data runs.** The live path does not use neatlogs.
+
+### How costs are reported
+
+Every run response carries a cost block.
+
+- **Provider cost.** In synthetic mode it is simulated at fixture prices (`simulated_fixture_prices`). In live mode it is an estimate from the records searched and enriched at the measured per-record prices (`estimated_per_record`). It is never an invoice. The Crustdata usage page is the source of truth for charges.
+- **Model cost.** `model_usd` is the known model cost only. `model_basis` says where the known costs came from: `none` (no external model cost, always so in synthetic mode), `gateway_reported`, `estimated` (from token usage at fallback rates), `mixed`, or `unavailable` (model calls were made but none has a known cost). `model_complete` is true only when every model call has a known cost; when it is false, `model_usd` is a lower bound. A model cost of 0 with basis `unavailable` means unknown, not free.
+
+### Deployment
+
+The deployment target is Vercel Hobby with a Neon Postgres database.
+
+Environment variable names:
+
+| Name | Needed for |
+|---|---|
+| `DATABASE_URL` | Required. Postgres connection for the live routes and the admin script. |
+| `INVITE_HMAC_SECRET` | Required. At least 32 characters. Used for code and IP hashes. |
+| `CRUSTDATA_LIVE_API_KEY` | Optional. Live mode only. |
+| `LIVE_LLM_API_KEY` | Optional. Live mode only. |
+| `LIVE_LLM_BASE_URL` | Optional. Live mode only. |
+
+Without `DATABASE_URL` and `INVITE_HMAC_SECRET` the routes answer `live_unavailable`. If any of the three optional variables is missing, live mode is off and synthetic codes still run. The live keys are intentionally not configured in production.
+
+Setup:
+
+1. Apply `src/server/live/schema.sql` to the database with any Postgres client. It is idempotent and can be applied more than once. It creates the tables and sets `live_enabled` to `false`.
+2. Create codes and manage them with the admin script, which needs `DATABASE_URL` and `INVITE_HMAC_SECRET` in the environment. A new code is printed once, when it is created.
+
+```bash
+npx tsx scripts/live-admin.ts create --label <label> --runs <n> [--mode synthetic|live]
+npx tsx scripts/live-admin.ts set-mode --label <label> --mode synthetic|live
+npx tsx scripts/live-admin.ts list
+npx tsx scripts/live-admin.ts disable --label <label>
+npx tsx scripts/live-admin.ts enable --label <label>
+npx tsx scripts/live-admin.ts add-runs --label <label> --n <n>
+npx tsx scripts/live-admin.ts kill-switch on|off|status
+```
+
+`kill-switch off` stops live-mode codes; `kill-switch on` allows them (only if the live keys are also configured).
+
+### Tested
+
+- The unit suite last ran with 741 passed and 6 skipped (`npm test`).
+- An integration test (`tests/live/pg-store.integration.test.ts`) fires 20 parallel run reservations at one code on a managed Postgres and lets exactly one through; the other 19 get `run_in_progress`. It ran once, from a laptop, against a development branch of the managed database. It is skipped unless `TEST_DATABASE_URL` is set, which is why the suite reports one skipped file and 6 skipped tests (the file holds six tests). It runs in a throwaway schema that is dropped afterwards.
+
 ## Tests
 
 ```bash
@@ -252,6 +334,9 @@ Ownership is taken from commit counts per folder, not from a formal assignment.
 - The first live-data run used a fake model. A second pair of live runs used the real model through the hackathon gateway, which means real company profiles were sent to that gateway. Each is a single run on 10 companies.
 - A neatlogs processing incident on Oct 11 was resolved the same day.
 - No per-run model cost cap or shared-key spend threshold is enforced (see Safety and spend controls).
+- Live beta: the per-run model cost cap and the key budget threshold are not implemented (same gap as above). A live run is bounded only by the call and record caps and the per-code run limit.
+- Live beta: there is no alerting and no admin UI. Codes and the kill switch are managed with the admin script.
+- Live beta: the rate limit uses the first of `x-real-ip`, then `x-forwarded-for`. On Vercel the platform sets both and, per Vercel's request-headers documentation, overwrites `x-forwarded-for` to prevent spoofing. On any other host these headers could be spoofed.
 - Run reports are local and not committed, so the numbers in `evidence/summary.json` cannot be re-derived from the repo alone.
 - The Crustdata provider retries HTTP requests (up to 2 retries on 429, 5xx and network errors) inside its post method without rechecking the budget before each retry, so a retry after a lost response could repeat a billable call, up to three attempts for one chunk. We did not observe this: the Crustdata usage page matched our expected credits exactly after the real runs, but we did not log HTTP attempts. Budget checks happen once per logical operation (before each search and before each enrichment chunk).
 
