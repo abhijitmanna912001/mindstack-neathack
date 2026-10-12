@@ -219,16 +219,45 @@ The page at `/live` takes an invite code and a small ICP form, and runs the impr
 This paragraph is the one place to edit when the facts change.
 
 - The production deployment is at https://mindstack-neathack.vercel.app.
-- Live mode is disabled in production because no live keys are configured there.
-- Outsiders get synthetic mode only.
-- Live mode for third parties waits for Crustdata's written confirmation.
+- Production now has the live variables configured (`CRUSTDATA_LIVE_API_KEY`, `LIVE_LLM_API_KEY`, `LIVE_LLM_BASE_URL`, `LIVE_LLM_MODEL`).
+- Live mode stays off by default through the kill switch. It is switched on only for a builder-run test.
+- After the first verified live run (below), every test code was disabled and the kill switch is off, so live mode is armed but closed.
+- Only builder-only live codes can run live mode. None is enabled at the time of writing.
+- Outsiders and judges get synthetic mode only.
+- Third-party display of Crustdata records still waits for Crustdata's written confirmation.
+- No company data from live runs is shown publicly. Demo evidence for live runs is limited to counts, costs and usage-page reconciliation.
+
+### First verified live run
+
+On 12 October 2026, around midday IST, one live run was made on the deployed site with a builder-only live code. The kill switch was on for the duration of the request and off again right after.
+
+| Measure | Value |
+|---|---|
+| Status | completed |
+| Companies searched | 10 |
+| Enriched | 5 |
+| Assessed | 5 |
+| Assessments failed | 0 |
+| Outreach drafts kept | 5 |
+| Outreach drafts suppressed | 0 |
+| Provider cost estimate | 3.69 USD (10 searched at 0.069 plus 5 enriched at 0.60, basis `estimated_per_record`) |
+| Model cost estimate | 0.0195 USD (basis `estimated`, complete; flat fallback rates of 1.10 and 5.50 USD per million input and output tokens, as in `src/core/agent/llm-policy.ts`) |
+
+- The `live_runs` table holds the same counts and costs and no company data.
+- The model was `claude-haiku-4-5-20251001` through Anthropic's OpenAI-compatible endpoint. Anthropic documents that endpoint as intended for testing and comparing models, not as a long-term production solution.
+- **Reconciliation of provider cost.** Crustdata's Usage page showed 12.3 credits used on 12 October 2026, the only usage that day (3.69 USD at 0.30 USD per credit). Its API Keys page showed the dedicated key's budget at 87.7 of 100 afterwards.
+- **Model cost is our estimate only.** The model provider's own usage page was not checked.
+- **Before the run.** A free probe with an industry that matches nothing was refused with `invalid_request` and gave the run back (the code's run counter stayed unchanged). This confirmed the live keys were active.
+- **Earlier local check.** `scripts/check-live-model.ts` had first run the improved pipeline on the fixtures with the real model: 5 assessed, 0 failed, 5052 input and 1177 output tokens.
+- **Deployed page.** Garvit tested the deployed /live page with a synthetic code and checked its layout on his phone.
+- This is one run. It is not a benchmark.
 
 ### Modes
 
 Each invite code is bound to one mode, set by whoever creates it (default `synthetic`).
 
 - **synthetic.** Fixture companies and a fake model. The search criteria you enter are ignored (the response says so), and nothing is spent. One outreach draft deliberately contains an injected unsupported number so the claim check can be seen suppressing it.
-- **live.** Real Crustdata data and a real model (`claude-haiku` through the gateway), for the builders only. A live run searches up to 10 companies, enriches up to 5, and allows up to 20 model calls and 1500 output tokens per call. The search is sorted by company id ascending. The industry you type is matched to the first autocomplete suggestion from Crustdata, and the response says which industry was searched.
+- **live.** Real Crustdata data and a real model (`claude-haiku-4-5-20251001` through Anthropic's OpenAI-compatible endpoint in the first verified run), for the builders only. A live run searches up to 10 companies, enriches up to 5, and allows up to 20 model calls and 1500 output tokens per call. The search is sorted by company id ascending. The industry you type is matched to the first autocomplete suggestion from Crustdata, and the response says which industry was searched.
 
 The form accepts an industry of 2 to 80 characters, the country India, and the sizes 11-50 and 51-200. Codes are up to 64 characters.
 
@@ -267,8 +296,9 @@ Environment variable names:
 | `CRUSTDATA_LIVE_API_KEY` | Optional. Live mode only. |
 | `LIVE_LLM_API_KEY` | Optional. Live mode only. |
 | `LIVE_LLM_BASE_URL` | Optional. Live mode only. |
+| `LIVE_LLM_MODEL` | Optional. Live mode only. When absent, the model in the code's live run config is used. |
 
-Without `DATABASE_URL` and `INVITE_HMAC_SECRET` the routes answer `live_unavailable`. If any of the three optional variables is missing, live mode is off and synthetic codes still run. The live keys are intentionally not configured in production.
+Without `DATABASE_URL` and `INVITE_HMAC_SECRET` the routes answer `live_unavailable`. If any of the three optional variables is missing, live mode is off and synthetic codes still run. Production has the live keys configured. Live mode stays closed by the kill switch except during a builder-run test.
 
 Setup:
 
@@ -335,6 +365,9 @@ Ownership is taken from commit counts per folder, not from a formal assignment.
 - A neatlogs processing incident on Oct 11 was resolved the same day.
 - No per-run model cost cap or shared-key spend threshold is enforced (see Safety and spend controls).
 - Live beta: the per-run model cost cap and the key budget threshold are not implemented (same gap as above). A live run is bounded only by the call and record caps and the per-code run limit.
+- Live beta: the first verified live run is a single run. The model cost is our estimate at flat fallback rates; the model provider's usage page was not checked. Anthropic documents its OpenAI-compatible endpoint as intended for testing and comparing models, not as a long-term production solution.
+- Live beta: `claude-haiku-4-5-20251001` has a tentative retirement date not sooner than 15 October 2026, according to Anthropic's model status page as checked on 12 October 2026.
+- Live beta: Anthropic's documentation says Claude 4.7 and later models return an error for a non-default temperature, and our client always sends temperature 0; claude-haiku-5-5 is a later model, so we expect it to be affected, but we did not test it.
 - Live beta: there is no alerting and no admin UI. Codes and the kill switch are managed with the admin script.
 - Live beta: the rate limit uses the first of `x-real-ip`, then `x-forwarded-for`. On Vercel the platform sets both and, per Vercel's request-headers documentation, overwrites `x-forwarded-for` to prevent spoofing. On any other host these headers could be spoofed.
 - Run reports are local and not committed, so the numbers in `evidence/summary.json` cannot be re-derived from the repo alone.
