@@ -18,7 +18,11 @@ import Home from "../page";
 import RootLayout from "../layout";
 import LivePage from "../live/page";
 import { AppHeader } from "../_components/AppHeader";
-import { DataModeSelector, LIVE_CRUSTDATA_HELPER } from "../_components/form/DataModeSelector";
+import {
+  DataModeSelector,
+  LIVE_CRUSTDATA_HELPER,
+  SYNTHETIC_DATA_DESCRIPTION,
+} from "../_components/form/DataModeSelector";
 import { HEADER_BADGE_LABELS, headerBadgeFor } from "../_lib/header-badge";
 
 beforeAll(() => {
@@ -58,6 +62,15 @@ describe("homepage", () => {
     expect(markup).toMatch(/<a[^>]*href="\/live"[^>]*>Try the invite-only live beta →<\/a>/);
   });
 
+  it("says the page records a profile only, right under the intro", () => {
+    const shown = text(renderToStaticMarkup(<Home />));
+    const sentence =
+      "This page records a profile only. To run the pipeline, use the invite-only live beta with an invitation code; saved evidence from earlier runs is on the results page.";
+    expect(shown).toContain(sentence);
+    expect(shown.indexOf("draft outreach in one place.")).toBeLessThan(shown.indexOf(sentence));
+    expect(shown.indexOf(sentence)).toBeLessThan(shown.indexOf("See the results:"));
+  });
+
   it("puts the two links side by side in a row that wraps on narrow screens", () => {
     const markup = renderToStaticMarkup(<Home />);
     const row = markup.match(/<div class="([^"]*)"><a[^>]*href="\/results"[\s\S]*?href="\/live"/);
@@ -79,6 +92,12 @@ describe("data source selector", () => {
     expect(radio(markup(), "synthetic")).not.toContain("disabled");
     // Even when the form echoes back "live", the option stays disabled.
     expect(radio(renderToStaticMarkup(<DataModeSelector defaultValue="live" />), "live")).toContain('disabled=""');
+  });
+
+  it("shows the exact synthetic data description", () => {
+    expect(SYNTHETIC_DATA_DESCRIPTION).toBe("Synthetic data: no API calls and no credits spent.");
+    expect(text(markup())).toContain(`Synthetic data ${SYNTHETIC_DATA_DESCRIPTION}`);
+    expect(text(markup())).not.toContain("Generated demo companies");
   });
 
   it("shows the exact Live Crustdata helper text", () => {
