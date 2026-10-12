@@ -272,7 +272,12 @@ The form accepts an industry of 2 to 80 characters, the country India, and the s
 - **Fixed error bodies.** Every error response uses a fixed message chosen by status code. No thrown-error text, stack trace, key, code or upstream text is returned. Responses carry `Cache-Control: no-store`.
 - **Scrubbing.** Free-text fields in a pipeline result (issue messages, failed-assessment messages, validation reasons, check findings, the run description) are replaced by fixed text chosen by code, once on the server and again when the results are mapped for the page.
 - **Logging.** The application code does not log request bodies, invite codes or results. The hosting platform keeps its standard request logs (method, path and status), which we checked contain no bodies.
-- **Data handling.** The application database stores no company records, only counts and costs. During a live run, the search criteria and company identifiers are sent to Crustdata, and company facts from the results are sent to the model provider in the assessment prompts. Results are returned only to the requesting browser, and our code does not log them. The database holds invite codes (hash, label, run limits, mode), one row per run with counts and costs only, a settings table and rate-limit counters.
+- **No company data stored by the application.** The application's database does not store company records. It holds invite codes (hash, label, run limits, mode), one row per run with counts and costs only, a settings table and rate-limit counters. This is about our storage only; company data does pass through external providers:
+
+  - **Deployed live-beta requests.** The search filters and the LinkedIn URLs of the companies to enrich are sent to Crustdata, which returns the company profiles. Facts built from those returned profiles are sent to the configured model provider for assessment.
+  - **Earlier CLI real-data evaluations.** In the runs described under "Live data with the real model", real company profiles were sent to the model gateway.
+
+  As documented above, no company record is stored in the repository, in the run reports or in any neatlogs trace, and the live path does not use neatlogs. This README makes no claim about what Crustdata or the model provider retain.
 - **Kill switch.** A `live_enabled` setting, off by default in the schema. While it is off, live-mode codes get `live_disabled` (HTTP 503) and the run is given back. Synthetic codes never read it. A live run is also refused when the live keys are not configured.
 - **Tracing is off for real-data runs.** The live path does not use neatlogs.
 
@@ -319,7 +324,7 @@ npx tsx scripts/live-admin.ts kill-switch on|off|status
 
 ### Tested
 
-- The unit suite last ran with 808 passed and 6 skipped (`npm test`). The 6 skipped are the Postgres integration tests that need `TEST_DATABASE_URL`.
+- The latest reported full run of the unit suite is from the PR #10 change set: 808 passed and 6 skipped (`npx vitest run`, the same as `npm test`). The suite was not rerun on the current `main` commit for this README update. The 6 skipped tests are the six in `tests/live/pg-store.integration.test.ts`, which need `TEST_DATABASE_URL` (see the next item).
 - An integration test (`tests/live/pg-store.integration.test.ts`) fires 20 parallel run reservations at one code on a managed Postgres and lets exactly one through; the other 19 get `run_in_progress`. It ran once, from a laptop, against a development branch of the managed database. It is skipped unless `TEST_DATABASE_URL` is set, which is why the suite reports one skipped file and 6 skipped tests (the file holds six tests). It runs in a throwaway schema that is dropped afterwards.
 
 ## Tests
