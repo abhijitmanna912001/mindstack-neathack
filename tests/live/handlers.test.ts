@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { hashCode, hashIp } from "../../src/server/live/codes";
+import { FakeLlmClient } from "../../src/core/agent/fake-llm";
+import type { LlmClient } from "../../src/core/agent/llm";
+import { FixtureProvider } from "../../src/core/data/fixture-provider";
+import type { CompanyProvider } from "../../src/core/data/provider";
+import { toLiveResultsDto } from "../../src/app/live/_lib/live-results";
 import { readLiveConfig } from "../../src/server/live/config";
 import { createLiveHandlers, createMemoizedConnector, type LiveRuntime } from "../../src/server/live/handlers";
-import { type LiveDeps, realFactories } from "../../src/server/live/run-live";
+import type { LiveDeps } from "../../src/server/live/run-live";
 import type { HitResult, LiveStore } from "../../src/server/live/store";
 import { FakeLiveStore } from "./fake-live-store";
 
@@ -180,25 +185,63 @@ describe("GET /api/live/status", () => {
 });
 
 describe("runtime fail-safe", () => {
-  it("never calls a live factory while LIVE_RESULTS_MAPPER is null", async () => {
-    const { buildLiveDeps, LIVE_RESULTS_MAPPER } = await import("../../src/app/api/live/_lib/runtime");
-    expect(LIVE_RESULTS_MAPPER).toBeNull();
-    const read = readLiveConfig({
-      DATABASE_URL: "x://db",
-      INVITE_HMAC_SECRET: SECRET,
-      CRUSTDATA_LIVE_API_KEY: "k1",
-      LIVE_LLM_API_KEY: "k2",
-      LIVE_LLM_BASE_URL: "https://llm.example.test",
-    });
+  const KEYS_ENV = {
+    DATABASE_URL: "x://db",
+    INVITE_HMAC_SECRET: SECRET,
+    CRUSTDATA_LIVE_API_KEY: "k1",
+    LIVE_LLM_API_KEY: "k2",
+    LIVE_LLM_BASE_URL: "https://llm.example.test",
+  };
+
+  async function setup() {
+    const mod = await import("../../src/app/api/live/_lib/runtime");
+    const read = readLiveConfig(KEYS_ENV);
     if (!read.ok) throw new Error("config should be ok");
     expect(read.config.live).not.toBeNull();
-
     const store = new FakeLiveStore();
     await store.setLiveEnabled(true);
     await store.admin.createCode("live", 1, hashCode("LIVE-CODE", SECRET), "live");
-    const createProvider = vi.fn(realFactories.createProvider);
-    const createLlm = vi.fn(realFactories.createLlm);
-    const built = { ...buildLiveDeps(read.config, store), createProvider, createLlm };
+    await store.admin.createCode("syn", 1, hashCode("SYNT-CODE", SECRET), "synthetic");
+    return { ...mod, config: read.config, store };
+  }
+
+  function fakeFactories() {
+    const createProvider = vi.fn<LiveDeps["createProvider"]>((_keys, config) => {
+      const inner = new FixtureProvider({ config, cost_per_record: { search: 0.069, enrich: 0.6 } });
+      const provider: CompanyProvider = {
+        autocompleteIndustry: async () => ({ ok: true, data: ["Staffing and Recruiting"], cost_usd: 0, calls: 1 }),
+        searchCompanies: (_f, limit) =>
+          inner.searchCompanies({ country: "", industries: [], employee_count_ranges: [] }, limit),
+        enrichCompanies: (urls) => inner.enrichCompanies(urls),
+      };
+      return { provider, budget: inner.budget };
+    });
+    const createLlm = vi.fn<LiveDeps["createLlm"]>((): LlmClient => new FakeLlmClient());
+    return { createProvider, createLlm };
+  }
+
+  it("runs a live code through the injected live factories when a mapper is present", async () => {
+    const { buildLiveDeps, LIVE_RESULTS_MAPPER, config, store } = await setup();
+    expect(LIVE_RESULTS_MAPPER).toBe(toLiveResultsDto);
+    const factories = fakeFactories();
+    const built = { ...buildLiveDeps(config, store, LIVE_RESULTS_MAPPER), ...factories };
+    expect(built.live).not.toBeNull();
+
+    const res = await createLiveHandlers(runtimeOf(store, built)).POST(
+      post(JSON.stringify({ code: "LIVE-CODE", icp: ICP })),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.mode).toBe("live");
+    expect(body.results.run.mode).toBe("live");
+    expect(factories.createProvider).toHaveBeenCalledOnce();
+    expect(factories.createLlm).toHaveBeenCalledOnce();
+  });
+
+  it("keeps live deps null and answers live_disabled when the mapper is null", async () => {
+    const { buildLiveDeps, config, store } = await setup();
+    const factories = fakeFactories();
+    const built = { ...buildLiveDeps(config, store, null), ...factories };
     expect(built.live).toBeNull();
 
     const res = await createLiveHandlers(runtimeOf(store, built)).POST(
@@ -206,11 +249,31 @@ describe("runtime fail-safe", () => {
     );
     expect(res.status).toBe(503);
     expect(await res.json()).toMatchObject({ status: "live_disabled" });
-    expect(createProvider).not.toHaveBeenCalled();
-    expect(createLlm).not.toHaveBeenCalled();
-    const [run] = [...store.runs.values()];
+    expect(factories.createProvider).not.toHaveBeenCalled();
+    expect(factories.createLlm).not.toHaveBeenCalled();
+    const [run] = [...store.runs.values()].filter((r) => r.status === "released");
     expect(run.status).toBe("released");
     expect(() => built.toResults({} as never, { mode: "live", model: "m" })).toThrow();
+  });
+
+  it("returns the exact live-safe synthetic body shape through the real runLive path", async () => {
+    const { buildLiveDeps, LIVE_RESULTS_MAPPER, config, store } = await setup();
+    const built = buildLiveDeps(config, store, LIVE_RESULTS_MAPPER);
+    const res = await createLiveHandlers(runtimeOf(store, built)).POST(
+      post(JSON.stringify({ code: "SYNT-CODE", icp: ICP })),
+    );
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    const body = JSON.parse(text);
+    expect(Object.keys(body).sort()).toEqual(["mode", "notices", "results", "status", "usage"]);
+    expect(body.usage).toEqual({ runsRemaining: 0 });
+    expect(body.results.run).toMatchObject({
+      mode: "synthetic",
+      data_source: "fixtures",
+      cost: { model_basis: "none", model_complete: true },
+    });
+    expect(text).not.toContain("actual_spend_usd");
+    expect(text.toLowerCase()).not.toContain("crustdata");
   });
 });
 
