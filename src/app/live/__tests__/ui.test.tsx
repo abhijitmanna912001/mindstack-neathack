@@ -11,11 +11,11 @@ import {
   SYNTHETIC_CODE_NOTE,
 } from "../_components/LiveFormView";
 import { BetaNotices, PreviewBanner } from "../_components/LiveNotices";
-import { LiveOutcome } from "../_components/LiveOutcome";
-import { LivePreview } from "../_components/LivePreview";
+import { elapsedText, LiveOutcome } from "../_components/LiveOutcome";
+import { LiveRun } from "../_components/LiveRun";
 import { LIVE_RUN_ERROR_CODES, SYNTHETIC_NOTICES } from "../_lib/contract";
 import { buildPreviewFixtures } from "../_lib/fixtures";
-import { ERROR_PRESENTATION, SERVER_FIELD_ERROR } from "../_lib/messages";
+import { ERROR_PRESENTATION, SERVER_FIELD_ERROR, TIMEOUT_PRESENTATION } from "../_lib/messages";
 import type { PreviewFixtures } from "../_lib/preview";
 import { serverFieldErrors, viewStateFor, type LiveViewState } from "../_lib/submission";
 import { EMPTY_LIVE_FORM, validateLiveForm } from "../_lib/validation";
@@ -46,11 +46,9 @@ function formProps(overrides: Partial<LiveFormViewProps> = {}): LiveFormViewProp
     values: EMPTY_LIVE_FORM,
     errors: {},
     submitting: false,
-    scenario: "success",
     onCodeChange: noop,
     onIndustryChange: noop,
     onSizeChange: noop,
-    onScenarioChange: noop,
     onSubmit: noop,
     ...overrides,
   };
@@ -124,12 +122,18 @@ describe("form", () => {
     expect(busy).toContain('aria-busy="true"');
     expect(text(busy)).toContain("Running…");
     expect(busy).toMatch(/<fieldset[^>]*disabled=""/);
-    expect(text(out)).toContain("Run search (preview)");
+    expect(text(out)).toContain("Run search");
+    expect(text(out)).not.toContain("Run search (preview)");
   });
 
-  it("labels the preview response picker as preview-only", () => {
-    expect(text(out)).toContain("Preview: simulated server response");
-    expect(text(out)).toContain("no request is sent");
+  it("shows the simulated-response picker only in preview mode", () => {
+    expect(out).not.toContain('id="live-preview-scenario"');
+    expect(text(out)).not.toContain("Preview: simulated server response");
+    const preview = html(<LiveFormView {...formProps({ preview: { scenario: "success", onScenarioChange: noop } })} />);
+    expect(preview).toContain('id="live-preview-scenario"');
+    expect(text(preview)).toContain("Preview: simulated server response");
+    expect(text(preview)).toContain("no request is sent");
+    expect(text(preview)).toContain("Run search (preview)");
   });
 
   it("explains that synthetic-mode codes ignore the submitted ICP", () => {
@@ -160,6 +164,28 @@ describe("outcome states", () => {
     expect(out).toContain('aria-busy="true"');
     expect(text(out)).toContain("Running…");
     expect(text(out)).toContain("nothing is being searched");
+  });
+
+  it("shows elapsed time while a real run is in progress", () => {
+    const out = text(html(<LiveOutcome state={{ kind: "loading" }} preview={false} elapsedSeconds={83} onBack={noop} onRetry={noop} />));
+    expect(out).toContain("A run can take up to a minute");
+    expect(out).toContain("1:23 elapsed");
+    expect(out).not.toContain("nothing is being searched");
+    expect(elapsedText(0)).toBe("0:00");
+    expect(elapsedText(5)).toBe("0:05");
+    expect(elapsedText(125)).toBe("2:05");
+  });
+
+  it("explains a timeout: the server may still finish, a run may be used, and it was not retried", () => {
+    const markup = html(<LiveOutcome state={{ kind: "timeout" }} preview={false} onBack={noop} onRetry={noop} />);
+    const out = text(markup);
+    expect(markup).toContain('role="alert"');
+    expect(out).toContain(TIMEOUT_PRESENTATION.title);
+    expect(out).toContain("The server may still be finishing the run");
+    expect(out).toContain("may already have used one of your available runs");
+    expect(out).toContain("does not cancel the run on the server");
+    expect(out).toContain("Back to the form");
+    expect(out).not.toContain("Try again");
   });
 
   it.each(LIVE_RUN_ERROR_CODES)("renders the %s error with a way to recover", (code) => {
@@ -258,11 +284,13 @@ describe("outcome states", () => {
 });
 
 describe("notices", () => {
-  it("shows the frontend-preview-only notice", () => {
+  it("shows the preview-mode notice, without the old not-connected banner", () => {
     const out = text(html(<PreviewBanner />));
-    expect(out).toContain("Frontend preview only");
-    expect(out).toContain("Not connected to live execution");
+    expect(out).toContain("Preview mode");
+    expect(out).toContain("Submitting here sends no request");
     expect(out).toContain("Nothing shown here is a live result");
+    expect(out).toContain("Leave preview mode");
+    expect(out).not.toContain("Not connected to live execution");
   });
 
   it("shows the beta, sponsorship and accuracy notices", () => {
@@ -272,10 +300,13 @@ describe("notices", () => {
     expect(out).toContain("not a guarantee of company-data accuracy");
   });
 
-  it("renders the interactive preview's initial form without a result", () => {
-    const out = html(<LivePreview fixtures={fixtures} />);
-    expect(out).toContain('id="live-code"');
-    expect(out).not.toContain('role="alert"');
-    expect(out).not.toContain("live-results-title");
+  it("renders the interactive form's initial state without a result, in both modes", () => {
+    for (const out of [html(<LiveRun />), html(<LiveRun previewFixtures={fixtures} />)]) {
+      expect(out).toContain('id="live-code"');
+      expect(out).not.toContain('role="alert"');
+      expect(out).not.toContain("live-results-title");
+    }
+    expect(html(<LiveRun />)).not.toContain('id="live-preview-scenario"');
+    expect(html(<LiveRun previewFixtures={fixtures} />)).toContain('id="live-preview-scenario"');
   });
 });

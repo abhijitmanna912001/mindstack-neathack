@@ -2,16 +2,18 @@ import { Badge } from "../../results/_components/Badge";
 import { MetricsPanel } from "../../results/_components/MetricsPanel";
 import { ProspectCard } from "../../results/_components/ProspectCard";
 import type { LiveRunSuccess } from "../_lib/contract";
-import { ERROR_PRESENTATION, invalidFieldText, retryAfterText } from "../_lib/messages";
+import { ERROR_PRESENTATION, invalidFieldText, retryAfterText, TIMEOUT_PRESENTATION } from "../_lib/messages";
 import type { LiveViewState } from "../_lib/submission";
 import { ModeBanner, RunNotices } from "./LiveNotices";
 import { LiveRunSummary } from "./LiveRunSummary";
 
 export interface LiveOutcomeProps {
   readonly state: LiveViewState;
-  // True while the page is a frontend preview: results are labelled as
+  // True in preview mode (/live?preview=1): results are labelled as
   // synthetic preview data and never as live.
   readonly preview: boolean;
+  // Seconds since the run started, shown while it is in progress.
+  readonly elapsedSeconds?: number;
   readonly onBack: () => void;
   readonly onRetry: () => void;
 }
@@ -86,8 +88,14 @@ function Results({ response, partial, preview, onBack }: { response: LiveRunSucc
   );
 }
 
+// Elapsed time as m:ss.
+export function elapsedText(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
 // What the page shows below the form for each state.
-export function LiveOutcome({ state, preview, onBack, onRetry }: LiveOutcomeProps) {
+export function LiveOutcome({ state, preview, elapsedSeconds = 0, onBack, onRetry }: LiveOutcomeProps) {
   switch (state.kind) {
     case "idle":
       return null;
@@ -95,15 +103,35 @@ export function LiveOutcome({ state, preview, onBack, onRetry }: LiveOutcomeProp
       return (
         <section
           role="status"
-          aria-live="polite"
           aria-busy="true"
           className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
         >
           <span aria-hidden="true" className="size-5 animate-spin rounded-full border-2 border-indigo-300 border-t-indigo-600" />
-          <span>
-            Running…{" "}
-            {preview ? "This preview simulates a run; nothing is being searched." : "This can take a little while."}
+          <span className="flex flex-col gap-0.5">
+            <span aria-live="polite">
+              Running…{" "}
+              {preview
+                ? "This preview simulates a run; nothing is being searched."
+                : "A run can take up to a minute. Please keep this page open."}
+            </span>
+            <span className="tabular-nums text-slate-600 dark:text-slate-300">{elapsedText(elapsedSeconds)} elapsed</span>
           </span>
+        </section>
+      );
+    case "timeout":
+      return (
+        <section
+          role="alert"
+          className="flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-500/40 dark:bg-amber-500/10"
+        >
+          <Badge tone="warn">{TIMEOUT_PRESENTATION.title}</Badge>
+          <p className="text-sm text-slate-800 dark:text-slate-100">{TIMEOUT_PRESENTATION.message}</p>
+          <p className="text-sm text-slate-700 dark:text-slate-200">{TIMEOUT_PRESENTATION.recovery}</p>
+          <div>
+            <button type="button" onClick={onBack} className={buttonPrimary}>
+              Back to the form
+            </button>
+          </div>
         </section>
       );
     case "error": {

@@ -1,6 +1,6 @@
-// Frontend-preview support: the simulated server responses a viewer can pick,
-// and a local mock adapter that returns them. It never touches the network:
-// no fetch, no /api/live call, no backend. Success responses are synthetic
+// Preview mode (/live?preview=1): the simulated server responses a viewer can
+// pick, and a local mock adapter that returns them. It never touches the
+// network and never calls the route. Success responses are synthetic
 // fixtures and are labelled as such; there is no live scenario, because the
 // preview never presents fixture data as a live run.
 
@@ -29,6 +29,11 @@ export const PREVIEW_SCENARIOS: readonly { readonly id: PreviewScenario; readonl
 ];
 
 export const PREVIEW_DELAY_MS = 700;
+
+// Preview mode is /live?preview=1 exactly; anything else gets the real form.
+export function isPreviewRequest(value: string | string[] | undefined): boolean {
+  return value === "1";
+}
 
 // Example values for the error bodies' optional fields.
 export const PREVIEW_INVALID_FIELD = "industry";

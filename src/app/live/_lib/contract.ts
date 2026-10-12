@@ -1,6 +1,6 @@
-// Frontend view of the agreed POST /api/live/run contract. The page is not
-// connected to the route yet: nothing in this app calls it. These types let
-// the preview, its mock adapter and the future real adapter share one shape.
+// Frontend view of the agreed POST /api/live/run contract, shared by the real
+// adapter (live-api.ts, the only file that calls the route) and the preview's
+// mock adapter.
 
 import type { LiveMode, LiveResultsDto } from "./live-results";
 
@@ -73,8 +73,9 @@ export const LIVE_RUN_HTTP_STATUS: Readonly<Record<LiveRunErrorCode, number>> = 
 
 export const isLiveRunSuccess = (response: LiveRunResponse): response is LiveRunSuccess => response.status === "ok";
 
-// How the page submits a run. The preview uses a local mock; the real
-// adapter will be added when live integration is explicitly enabled.
+// How the page submits a run: the real adapter (live-api.ts) or the
+// preview's local mock. The signal lets the page stop waiting; it does not
+// cancel a run the server has already started.
 export interface LiveRunAdapter {
-  submit(request: LiveRunRequest): Promise<LiveRunResponse>;
+  submit(request: LiveRunRequest, options?: { readonly signal?: AbortSignal }): Promise<LiveRunResponse>;
 }

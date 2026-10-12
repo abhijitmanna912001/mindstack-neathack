@@ -69,6 +69,16 @@ export const ERROR_PRESENTATION: Readonly<Record<LiveRunErrorCode, ErrorPresenta
   },
 };
 
+// Shown when the page stopped waiting (client timeout). The run may still be
+// finishing on the server, and stopping the wait does not cancel it.
+export const TIMEOUT_PRESENTATION = {
+  title: "Still no response after 2 minutes",
+  message:
+    "The page stopped waiting for the server. The server may still be finishing the run, and the run may already have used one of your available runs.",
+  recovery:
+    "Stopping the wait does not cancel the run on the server, so it was not retried. Wait a few minutes before you try again.",
+} as const;
+
 // The fields an invalid_request error can name, and how the page refers to
 // them. "icp" is the whole search profile.
 const FIELD_LABELS: Readonly<Record<string, string>> = {

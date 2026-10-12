@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "../../results/_components/Badge";
 import { SYNTHETIC_NOTICES } from "../_lib/contract";
 import type { LiveMode } from "../_lib/live-results";
@@ -42,7 +43,10 @@ export function RunNotices({ mode, notices }: { mode: LiveMode; notices: readonl
   const others = notices.filter((n) => !synthetic.includes(n));
   if (synthetic.length === 0 && others.length === 0) return null;
   return (
-    <div className="flex flex-col gap-2">
+    <section aria-labelledby="live-run-notices" className="flex flex-col gap-2">
+      <h3 id="live-run-notices" className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
+        Notices for this run
+      </h3>
       {synthetic.length > 0 && (
         <ul aria-label="Synthetic demo notices" className="flex flex-col gap-2">
           {synthetic.map((notice) => (
@@ -67,12 +71,11 @@ export function RunNotices({ mode, notices }: { mode: LiveMode; notices: readonl
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }
 
-// The frontend-preview notice, shown until live integration is explicitly
-// enabled, and the standing beta notices.
+// Shown in preview mode only (/live?preview=1), and the standing beta notices.
 export function PreviewBanner() {
   return (
     <section
@@ -80,15 +83,18 @@ export function PreviewBanner() {
       className="flex flex-col gap-2 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-5 dark:border-amber-400/60 dark:bg-amber-500/10"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="warn">Frontend preview only</Badge>
+        <Badge tone="warn">Preview mode</Badge>
         <h2 id="preview-banner" className="text-base font-semibold text-slate-900 dark:text-slate-50">
-          Not connected to live execution
+          Simulated responses only
         </h2>
       </div>
       <p className="text-sm leading-6 text-slate-800 dark:text-slate-100">
-        This page is a preview of the live beta&apos;s interface. Submitting the form does not check your invitation
-        code, search any provider, call any model or spend anything. It shows a simulated response, chosen below,
-        built from synthetic fixtures. Nothing shown here is a live result.
+        Preview mode shows every response the live beta can give. Submitting here sends no request: it does not check
+        your invitation code, search any provider, call any model or spend anything. It shows a simulated response,
+        chosen below, built from synthetic fixtures. Nothing shown here is a live result.{" "}
+        <Link href="/live" className="font-medium text-indigo-700 underline-offset-4 hover:underline dark:text-indigo-300">
+          Leave preview mode
+        </Link>
       </p>
     </section>
   );
